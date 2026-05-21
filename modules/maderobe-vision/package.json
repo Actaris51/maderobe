@@ -1,0 +1,7 @@
+{
+  "name": "maderobe-vision",
+  "version": "0.1.0",
+  "description": "Local Expo module wrapping Apple Vision framework for clothing image analysis (classify, background removal, dominant colors).",
+  "main": "index.ts",
+  "private": true
+}
