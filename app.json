@@ -48,6 +48,19 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Maderobe accède à votre galerie pour importer des photos de vos vêtements.",
+          "cameraPermission": "Maderobe utilise l'appareil photo pour ajouter vos vêtements à votre garde-robe."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Maderobe utilise l'appareil photo pour ajouter vos vêtements à votre garde-robe."
+        }
       ]
     ],
     "experiments": {
