@@ -25,6 +25,11 @@ export default function RootLayout() {
           options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen name="item/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="generate-outfit"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
+        <Stack.Screen name="outfit/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
