@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maderobe — Ta garde-robe virtuelle</title>
+  <meta name="description" content="Maderobe catalogue tes vêtements, te suggère des tenues et t'aide à organiser ta garde-robe. iOS bientôt disponible.">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <style>
+    :root {
+      --bg: #f5efe7;
+      --fg: #2a221d;
+      --muted: #6e6259;
+      --accent: #3a302a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5;
+    }
+    main {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 80px 24px 60px;
+      text-align: center;
+    }
+    .logo { width: 120px; height: 120px; border-radius: 28px; }
+    h1 { font-size: 2.5rem; margin: 24px 0 8px; letter-spacing: -0.03em; }
+    .tagline { font-size: 1.15rem; color: var(--muted); margin: 0 0 32px; }
+    .features {
+      text-align: left;
+      max-width: 380px;
+      margin: 0 auto 40px;
+      padding: 0;
+      list-style: none;
+    }
+    .features li {
+      padding: 10px 0;
+      border-bottom: 1px solid #d8cfc4;
+      font-size: 1rem;
+    }
+    .features li:last-child { border-bottom: none; }
+    .features li::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+    footer {
+      margin-top: 60px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--muted); margin: 0 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="favicon.png" alt="Maderobe" class="logo">
+    <h1>Maderobe</h1>
+    <p class="tagline">Ta garde-robe virtuelle, minimaliste.</p>
+
+    <ul class="features">
+      <li>Catalogue chaque vêtement en photo</li>
+      <li>Filtre par couleur, type, saison, motif</li>
+      <li>Reçois des suggestions de tenues</li>
+      <li>100 % local, aucune donnée envoyée</li>
+    </ul>
+
+    <p style="color: var(--muted); font-style: italic;">
+      iOS bientôt disponible sur l'App Store.
+    </p>
+
+    <footer>
+      <a href="privacy-policy.html">Confidentialité</a> ·
+      <a href="privacy-policy-en.html">Privacy (EN)</a> ·
+      <a href="mailto:julien.duval.patrimoine@gmail.com">Contact</a>
+    </footer>
+  </main>
+</body>
+</html>
