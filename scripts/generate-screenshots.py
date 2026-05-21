@@ -178,15 +178,26 @@ def mock_quick_add(draw, x, y, w, h):
 
 
 def mock_outfit_stack(draw, x, y, w, h):
-    """Vertical stack of 3 clothing rectangles (top → bottom → shoes)."""
+    """Vertical stack of 3 clothing rectangles with small hanger glyphs."""
     gap = h * 0.04
     block_h = (h - gap * 2) / 3
     palette = [(180, 195, 215), (90, 80, 75), (200, 195, 185)]
+    labels = ["Haut", "Bas", "Chaussures"]
     for i, color in enumerate(palette):
         bx = x + w * 0.15
         bw = w * 0.70
         by = y + i * (block_h + gap)
         round_rect(draw, (bx, by, bx + bw, by + block_h), radius=block_h * 0.10, fill=color)
+        # Mini hanger inside each block
+        hanger_color = (255, 255, 255) if i == 1 else (60, 50, 45)
+        draw_hanger(draw, bx + bw / 2, by + block_h * 0.50, block_h * 0.55,
+                    stroke_w=max(4, int(block_h * 0.025)), color=hanger_color)
+        # Small text label below the hanger
+        font = load_font(FONT_REG, max(14, int(block_h * 0.10)))
+        text_color = (255, 255, 255) if i == 1 else (60, 50, 45)
+        lbl = labels[i]
+        lw = text_w(draw, lbl, font)
+        draw.text((int(bx + (bw - lw) / 2), int(by + block_h * 0.78)), lbl, font=font, fill=text_color)
 
 
 def mock_outfit_of_day(draw, x, y, w, h):
@@ -333,7 +344,8 @@ def compose(out_path: Path, width: int, height: int, headline: str, tagline: str
     inner_h = card_h - 2 * pad
     mock_fn(draw, inner_x, inner_y, inner_w, inner_h)
 
-    img.save(out_path, 'PNG', optimize=True)
+    # Save with explicit DPI metadata — some ASC validators reject PNGs without it
+    img.save(out_path, 'PNG', optimize=True, dpi=(72, 72))
     print(f"  wrote {out_path}")
 
 
