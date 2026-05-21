@@ -61,6 +61,12 @@
         {
           "cameraPermission": "Maderobe utilise l'appareil photo pour ajouter vos vêtements à votre garde-robe."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Maderobe utilise ta position pour adapter les suggestions de tenues à la météo locale. Tu peux refuser et choisir une ville à la main."
+        }
       ]
     ],
     "experiments": {

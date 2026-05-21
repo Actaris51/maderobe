@@ -12,9 +12,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { harmonyScore } from '@/lib/color-utils';
 import { generateOutfit } from '@/lib/outfit-generator';
 import { currentSeason } from '@/lib/season';
+import { conditionEmoji, conditionLabel } from '@/lib/weather';
 import { useItemsStore } from '@/stores/items-store';
 import { useOutfitsStore } from '@/stores/outfits-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useWeatherStore } from '@/stores/weather-store';
 import type { ClothingItem } from '@/types';
 
 type Slot = {
@@ -38,6 +40,7 @@ export default function OutfitOfTheDayScreen() {
   const markItemWorn = useItemsStore((s) => s.markWorn);
   const addOutfit = useOutfitsStore((s) => s.add);
   const defaultOccasion = useSettingsStore((s) => s.defaultOccasion);
+  const currentWeather = useWeatherStore((s) => s.current);
 
   const season = useMemo(() => currentSeason(), []);
 
@@ -173,6 +176,14 @@ export default function OutfitOfTheDayScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {currentWeather && (
+          <View style={[styles.weatherBanner, { borderColor: text + '15' }]}>
+            <ThemedText style={styles.weatherBannerText}>
+              {conditionEmoji(currentWeather.condition)} {currentWeather.temperature.toFixed(0)}°C ·{' '}
+              {conditionLabel(currentWeather.condition)}
+            </ThemedText>
+          </View>
+        )}
         <ThemedText style={styles.tip}>
           ‹ › pour changer un item · 🔒 pour le verrouiller
         </ThemedText>
@@ -352,6 +363,14 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '600' },
   scroll: { padding: 16 },
   tip: { fontSize: 12, opacity: 0.5, textAlign: 'center', marginBottom: 16 },
+  weatherBanner: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  weatherBannerText: { fontSize: 14, fontWeight: '500' },
   scoreCard: {
     flexDirection: 'row',
     alignItems: 'center',

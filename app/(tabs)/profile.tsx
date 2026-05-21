@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as WebBrowser from 'expo-web-browser';
-import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
@@ -14,10 +14,13 @@ import {
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { exportWardrobeJson } from '@/lib/export';
+import { getCoarseLocation } from '@/lib/location';
 import { computeStats } from '@/lib/stats';
+import { conditionEmoji, conditionLabel } from '@/lib/weather';
 import { useItemsStore } from '@/stores/items-store';
 import { useOutfitsStore } from '@/stores/outfits-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useWeatherStore } from '@/stores/weather-store';
 import type { LibraryLayout, Occasion } from '@/types';
 
 const PRIVACY_URL = 'https://actaris51.github.io/maderobe/privacy-policy.html';
@@ -39,7 +42,40 @@ export default function ProfileScreen() {
   const settings = useSettingsStore();
   const setSetting = useSettingsStore((s) => s.set);
 
+  const currentWeather = useWeatherStore((s) => s.current);
+  const refreshWeather = useWeatherStore((s) => s.refresh);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+
   const stats = useMemo(() => computeStats(items), [items]);
+
+  const handleActivateWeather = async () => {
+    setWeatherLoading(true);
+    try {
+      const loc = await getCoarseLocation();
+      if (!loc.granted) {
+        Alert.alert(
+          'Autorisation refusée',
+          "Tu peux activer la position depuis Réglages › Maderobe › Position. Sans ça, les suggestions ne s'adaptent pas à la météo.",
+        );
+        return;
+      }
+      await refreshWeather(loc.lat, loc.lon, true);
+    } catch (err) {
+      Alert.alert('Erreur météo', String(err instanceof Error ? err.message : err));
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const handleRefreshWeather = async () => {
+    if (!currentWeather) return handleActivateWeather();
+    setWeatherLoading(true);
+    try {
+      await refreshWeather(currentWeather.lat, currentWeather.lon, true);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
 
   const handleExport = async () => {
     if (items.length === 0 && outfits.length === 0) {
@@ -165,6 +201,55 @@ export default function ProfileScreen() {
             )}
           </Section>
         )}
+
+        {/* -------- Weather -------- */}
+        <Section title="Météo">
+          {currentWeather ? (
+            <View style={[styles.weatherCard, { borderColor: text + '15' }]}>
+              <ThemedText style={styles.weatherMain}>
+                {conditionEmoji(currentWeather.condition)} {currentWeather.temperature.toFixed(0)}°C ·{' '}
+                {conditionLabel(currentWeather.condition)}
+              </ThemedText>
+              <ThemedText style={styles.weatherSub}>
+                Humidité {currentWeather.humidity.toFixed(0)} % · mis à jour{' '}
+                {new Date(currentWeather.fetchedAt).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </ThemedText>
+              <Pressable onPress={handleRefreshWeather} style={styles.weatherRefresh} disabled={weatherLoading}>
+                {weatherLoading ? (
+                  <ActivityIndicator size="small" color={tint} />
+                ) : (
+                  <ThemedText style={[styles.weatherRefreshText, { color: tint }]}>
+                    Mettre à jour
+                  </ThemedText>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={handleActivateWeather}
+              disabled={weatherLoading}
+              style={[styles.actionRow, { borderColor: text + '15' }]}
+            >
+              <Ionicons name="partly-sunny-outline" size={22} color={tint} />
+              <View style={styles.actionMeta}>
+                <ThemedText style={[styles.actionLabel, { color: tint }]}>
+                  Activer la météo
+                </ThemedText>
+                <ThemedText style={styles.actionSub}>
+                  Adapte les suggestions de tenues à la température actuelle.
+                </ThemedText>
+              </View>
+              {weatherLoading ? (
+                <ActivityIndicator size="small" color={tint} />
+              ) : (
+                <Ionicons name="chevron-forward" size={18} color={text + '60'} />
+              )}
+            </Pressable>
+          )}
+        </Section>
 
         {/* -------- Settings -------- */}
         <Section title="Préférences">
@@ -371,4 +456,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   aboutText: { fontSize: 13, opacity: 0.6, textAlign: 'center', marginBottom: 4 },
+  weatherCard: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  weatherMain: { fontSize: 18, fontWeight: '600' },
+  weatherSub: { fontSize: 13, opacity: 0.6, marginTop: 4 },
+  weatherRefresh: { paddingVertical: 8, marginTop: 4 },
+  weatherRefreshText: { fontSize: 14, fontWeight: '500' },
 });
