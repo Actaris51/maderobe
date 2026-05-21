@@ -20,6 +20,11 @@ export default function RootLayout() {
           name="add-item"
           options={{ presentation: 'modal', headerShown: false }}
         />
+        <Stack.Screen
+          name="edit-item/[id]"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
+        <Stack.Screen name="item/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
