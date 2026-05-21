@@ -14,6 +14,7 @@ const DEFAULTS: Settings = {
   defaultOccasion: 'casual',
   hapticsEnabled: true,
   locale: 'fr',
+  hasSeenOnboarding: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(

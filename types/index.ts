@@ -101,4 +101,6 @@ export type Settings = {
   hapticsEnabled: boolean;
   /** Free-form ISO language tag — kept for future i18n. */
   locale: 'fr' | 'en';
+  /** Marks the first-launch onboarding flow as completed. */
+  hasSeenOnboarding: boolean;
 };
