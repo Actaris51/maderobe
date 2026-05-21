@@ -28,6 +28,7 @@ export default function LooksScreen() {
   );
 
   const handleGenerate = () => router.push('/generate-outfit');
+  const handleOutfitOfTheDay = () => router.push('/outfit-of-the-day');
   const handleOpen = (id: string) => router.push(`/outfit/${id}` as never);
 
   return (
@@ -37,9 +38,14 @@ export default function LooksScreen() {
     >
       <View style={[styles.header, { borderBottomColor: text + '15' }]}>
         <ThemedText style={styles.title}>Looks</ThemedText>
-        <Pressable onPress={handleGenerate} hitSlop={8} style={styles.iconBtn}>
-          <Ionicons name="sparkles-outline" size={22} color={text} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={handleOutfitOfTheDay} hitSlop={8} style={styles.iconBtn}>
+            <Ionicons name="sunny-outline" size={22} color={text} />
+          </Pressable>
+          <Pressable onPress={handleGenerate} hitSlop={8} style={styles.iconBtn}>
+            <Ionicons name="sparkles-outline" size={22} color={text} />
+          </Pressable>
+        </View>
       </View>
 
       {outfits.length === 0 ? (
@@ -170,6 +176,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: { fontSize: 24, fontWeight: '700' },
+  headerActions: { flexDirection: 'row', gap: 4, alignItems: 'center' },
   iconBtn: { padding: 8 },
   listContent: { padding: 16, paddingBottom: 100 },
   card: {
