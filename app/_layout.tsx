@@ -33,6 +33,10 @@ export default function RootLayout() {
           name="outfit-of-the-day"
           options={{ presentation: 'modal', headerShown: false }}
         />
+        <Stack.Screen
+          name="packing"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
         <Stack.Screen name="outfit/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />

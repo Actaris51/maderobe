@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -279,6 +280,17 @@ export default function ProfileScreen() {
               ))}
             </View>
           </View>
+        </Section>
+
+        {/* -------- Tools -------- */}
+        <Section title="Outils">
+          <ActionRow
+            icon="bag-handle-outline"
+            label="Préparer une valise"
+            sublabel="Liste optimisée selon le nombre de jours et la météo prévue."
+            onPress={() => router.push('/packing' as never)}
+            color={tint}
+          />
         </Section>
 
         {/* -------- Data -------- */}
