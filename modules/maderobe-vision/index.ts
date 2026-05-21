@@ -5,20 +5,15 @@ import { requireNativeModule } from 'expo-modules-core';
  *
  * All methods run entirely on-device — no network, no cost, no privacy concern.
  *
- * iOS-only. Calling these on Android or web will throw at module-load time.
+ * iOS-only. On other platforms (Expo Go, web, Android, or in JS-only test envs)
+ * a no-op mock is used so the app still runs and users can save items manually.
  */
 
 export type ClassificationLabel = {
-  /** Raw label from the Vision classifier (e.g. "jersey", "running_shoe"). */
   label: string;
-  /** Confidence score in [0, 1]. */
   confidence: number;
 };
 
-/**
- * High-level wardrobe category mapped from the raw Vision label.
- * If the classifier returns an unrecognized label, type is "unknown".
- */
 export type ClothingType =
   | 'top'
   | 'bottom'
@@ -32,51 +27,87 @@ export type ClothingType =
   | 'unknown';
 
 export type DominantColor = {
-  /** Hex value, lowercase, with leading "#" (e.g. "#1a2b3c"). */
   hex: string;
-  /** RGB components, each in [0, 255]. */
   r: number;
   g: number;
   b: number;
-  /** Approximate share of pixels close to this color, in [0, 1]. Sums to ~1 across all returned colors. */
   weight: number;
 };
 
 export type AnalysisResult = {
-  /** Top classification labels from Vision (sorted by descending confidence). */
   labels: ClassificationLabel[];
-  /** Mapped clothing type. May be "unknown" if no label matches the wardrobe taxonomy. */
   type: ClothingType;
-  /** Dominant colors, sorted by descending weight. */
   colors: DominantColor[];
-  /** file:// URI of the background-removed image (iOS 17+ only). Undefined if iOS < 17 or removal failed. */
   backgroundRemovedUri?: string;
 };
 
-interface MaderobeVisionModuleType {
-  /** Classify the image against Apple's general classifier and map to a clothing type. */
+export interface MaderobeVisionModuleType {
   classifyImage(uri: string): Promise<{ labels: ClassificationLabel[]; type: ClothingType }>;
-
-  /**
-   * Generate a foreground-only image (background removed).
-   * Requires iOS 17.0+. On older systems, resolves with { uri: <original uri>, removed: false }.
-   * The output URI points to a JPEG in the app's cache directory.
-   */
   removeBackground(uri: string): Promise<{ uri: string; removed: boolean }>;
-
-  /**
-   * Extract the N dominant colors from the image via k-means clustering on a downscaled copy.
-   * Default N = 3.
-   */
   extractDominantColors(uri: string, n?: number): Promise<DominantColor[]>;
-
-  /**
-   * Convenience method: runs background removal + classification + dominant colors in one call.
-   * Significantly faster than calling the three separately because the image is decoded once.
-   */
-  analyzeClothingItem(uri: string, options?: { colorCount?: number }): Promise<AnalysisResult>;
+  analyzeClothingItem(
+    uri: string,
+    options?: { colorCount?: number },
+  ): Promise<AnalysisResult>;
 }
 
-const native = requireNativeModule<MaderobeVisionModuleType>('MaderobeVisionModule');
+// ----------------------------------------------------------------------------
+// Mock implementation
+// ----------------------------------------------------------------------------
+// Used when the native module is unavailable (Expo Go, web, Android, or before
+// the first EAS native build on iOS). All methods resolve with empty/neutral
+// values so the rest of the app still works — the user just enters everything
+// manually in that case.
+// ----------------------------------------------------------------------------
 
-export default native;
+const MOCK_COLORS: DominantColor[] = [
+  { hex: '#808080', r: 128, g: 128, b: 128, weight: 0.5 },
+  { hex: '#a0a0a0', r: 160, g: 160, b: 160, weight: 0.3 },
+  { hex: '#606060', r: 96, g: 96, b: 96, weight: 0.2 },
+];
+
+const mock: MaderobeVisionModuleType = {
+  async classifyImage(_uri) {
+    return { labels: [], type: 'unknown' };
+  },
+  async removeBackground(uri) {
+    return { uri, removed: false };
+  },
+  async extractDominantColors(_uri, _n = 3) {
+    return MOCK_COLORS;
+  },
+  async analyzeClothingItem(_uri, _options) {
+    return { labels: [], type: 'unknown', colors: MOCK_COLORS };
+  },
+};
+
+// ----------------------------------------------------------------------------
+// Lazy native lookup with graceful fallback
+// ----------------------------------------------------------------------------
+
+let nativeOrMock: MaderobeVisionModuleType | null = null;
+
+function resolveImpl(): MaderobeVisionModuleType {
+  if (nativeOrMock !== null) return nativeOrMock;
+  try {
+    nativeOrMock = requireNativeModule<MaderobeVisionModuleType>('MaderobeVisionModule');
+  } catch {
+    nativeOrMock = mock;
+  }
+  return nativeOrMock;
+}
+
+/** True if the underlying native module is present (i.e. running on an iOS build that includes it). */
+export function isNativeAvailable(): boolean {
+  const impl = resolveImpl();
+  return impl !== mock;
+}
+
+const moduleProxy: MaderobeVisionModuleType = {
+  classifyImage: (uri) => resolveImpl().classifyImage(uri),
+  removeBackground: (uri) => resolveImpl().removeBackground(uri),
+  extractDominantColors: (uri, n) => resolveImpl().extractDominantColors(uri, n),
+  analyzeClothingItem: (uri, options) => resolveImpl().analyzeClothingItem(uri, options),
+};
+
+export default moduleProxy;
