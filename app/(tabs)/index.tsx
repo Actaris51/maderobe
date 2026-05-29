@@ -184,11 +184,12 @@ function DressingGrid({
       numColumns={GRID_COLS}
       contentContainerStyle={styles.gridContent}
       columnWrapperStyle={styles.gridRow}
-      renderItem={({ item }) => (
+      renderItem={({ item, index }) => (
         <ItemThumbnail
           item={item}
           size={GRID_THUMB_SIZE}
           onPress={() => onItemPress(item.id)}
+          index={index}
         />
       )}
     />

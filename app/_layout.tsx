@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
+import { MilestoneCelebration } from '@/components/milestone-celebration';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSettingsStore } from '@/stores/settings-store';
 
@@ -57,6 +58,7 @@ export default function RootLayout() {
         />
         <Stack.Screen name="outfit/[id]" options={{ headerShown: false }} />
       </Stack>
+      <MilestoneCelebration />
       <StatusBar style="auto" />
     </ThemeProvider>
   );

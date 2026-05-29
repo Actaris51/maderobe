@@ -1,7 +1,9 @@
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { SPRING, staggerDelay, HAPTIC } from '@/constants/motion';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { ClothingItem } from '@/types';
@@ -10,28 +12,63 @@ type Props = {
   item: ClothingItem;
   size: number;
   onPress: () => void;
+  /** Index in the parent list — used to compute a staggered reveal delay. */
+  index?: number;
 };
 
-/** Square thumbnail with a small favorite indicator. Used in the grid layout. */
-export function ItemThumbnail({ item, size, onPress }: Props) {
+/**
+ * Square thumbnail with:
+ *  - staggered fade-in on mount (Reanimated FadeIn + spring)
+ *  - press-to-shrink spring (snappy)
+ *  - haptic on press
+ *  - favorite badge
+ */
+export function ItemThumbnail({ item, size, onPress, index = 0 }: Props) {
   const scheme = useColorScheme() ?? 'light';
   const uri = item.photoBgRemovedUri ?? item.photoUri;
 
+  // Press-to-shrink scale
+  const pressScale = useSharedValue(1);
+  const animatedPress = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
+
+  const handlePressIn = () => {
+    pressScale.value = withSpring(0.95, SPRING.snappy);
+  };
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1, SPRING.snappy);
+  };
+  const handlePress = () => {
+    HAPTIC.tap();
+    onPress();
+  };
+
   return (
-    <Pressable onPress={onPress} style={[styles.wrap, { width: size, height: size }]}>
-      <Image
-        source={{ uri }}
-        style={styles.img}
-        contentFit="cover"
-        transition={120}
-        cachePolicy="memory-disk"
-      />
-      {item.isFavorite && (
-        <View style={[styles.favBadge, { backgroundColor: Colors[scheme].background }]}>
-          <ThemedText style={styles.fav}>★</ThemedText>
-        </View>
-      )}
-    </Pressable>
+    <Animated.View
+      entering={FadeIn.delay(staggerDelay(index)).duration(350)}
+      style={[styles.wrap, { width: size, height: size }, animatedPress]}
+    >
+      <Pressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.pressable}
+      >
+        <Image
+          source={{ uri }}
+          style={styles.img}
+          contentFit="cover"
+          transition={120}
+          cachePolicy="memory-disk"
+        />
+        {item.isFavorite && (
+          <View style={[styles.favBadge, { backgroundColor: Colors[scheme].background }]}>
+            <ThemedText style={styles.fav}>★</ThemedText>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -41,6 +78,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#f0f0f0',
     position: 'relative',
+  },
+  pressable: {
+    width: '100%',
+    height: '100%',
   },
   img: {
     width: '100%',

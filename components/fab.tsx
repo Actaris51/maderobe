@@ -1,7 +1,18 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { ThemedText } from './themed-text';
 
+import { HAPTIC, SPRING } from '@/constants/motion';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -14,26 +25,84 @@ type Props = {
 
 /**
  * Floating Action Button — a round "+" pinned to the bottom-right.
- * Uses the active tint color from the theme.
+ *
+ * Animations:
+ *  - Mount: ZoomIn spring + slight rotation
+ *  - Press in: shrink + bounce (snappy spring)
+ *  - Press out: spring back + tiny rotation kick
+ *  - Tap: ripple wave expanding from center
+ *  - Haptic: medium impact on press
  */
 export function Fab({ onPress, label = '+', bottom = 24 }: Props) {
   const scheme = useColorScheme() ?? 'light';
   const tint = Colors[scheme].tint;
 
+  // Press scale
+  const scale = useSharedValue(1);
+  // Ripple wave (scale 0 → 1, opacity 0.4 → 0)
+  const rippleScale = useSharedValue(0);
+  const rippleOpacity = useSharedValue(0);
+  // Tiny rotation kick on release
+  const rotation = useSharedValue(0);
+
+  const btnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }, { rotate: `${rotation.value}deg` }],
+  }));
+
+  const rippleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: rippleScale.value }],
+    opacity: rippleOpacity.value,
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.88, SPRING.snappy);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, SPRING.bouncy);
+    rotation.value = withSequence(
+      withTiming(8, { duration: 80, easing: Easing.out(Easing.cubic) }),
+      withSpring(0, SPRING.gentle),
+    );
+  };
+
+  const handlePress = () => {
+    HAPTIC.medium();
+    // Kick off the ripple
+    rippleScale.value = 0;
+    rippleOpacity.value = 0.4;
+    rippleScale.value = withTiming(2.4, { duration: 500, easing: Easing.out(Easing.cubic) });
+    rippleOpacity.value = withDelay(80, withTiming(0, { duration: 420 }));
+    onPress();
+  };
+
   return (
     <View style={[styles.wrap, { bottom }]} pointerEvents="box-none">
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.btn,
-          { backgroundColor: tint, opacity: pressed ? 0.85 : 1 },
-        ]}
+      <Animated.View
+        entering={ZoomIn.springify().damping(11).stiffness(220).delay(150)}
+        style={btnStyle}
       >
-        <ThemedText style={styles.label}>{label}</ThemedText>
-      </Pressable>
+        <View style={styles.outer}>
+          {/* Ripple layer (behind the button) */}
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.ripple, { backgroundColor: tint }, rippleStyle]}
+          />
+          <Pressable
+            onPress={handlePress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            style={[styles.btn, { backgroundColor: tint }]}
+          >
+            <ThemedText style={styles.label}>{label}</ThemedText>
+          </Pressable>
+        </View>
+      </Animated.View>
     </View>
   );
 }
+
+const SIZE = 56;
 
 const styles = StyleSheet.create({
   wrap: {
@@ -41,17 +110,31 @@ const styles = StyleSheet.create({
     right: 20,
     alignItems: 'flex-end',
   },
+  outer: {
+    width: SIZE,
+    height: SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ripple: {
+    position: 'absolute',
+    width: SIZE,
+    height: SIZE,
+    borderRadius: SIZE / 2,
+    top: 0,
+    left: 0,
+  },
   btn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: SIZE,
+    height: SIZE,
+    borderRadius: SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
   label: {
     color: '#fff',

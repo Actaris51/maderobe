@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -13,6 +14,7 @@ import {
 } from '@/constants/taxonomy';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { HAPTIC, SPRING, staggerDelay } from '@/constants/motion';
 import { deleteImage } from '@/lib/image-storage';
 import { useItemsStore } from '@/stores/items-store';
 import { useOutfitsStore } from '@/stores/outfits-store';
@@ -34,6 +36,7 @@ export default function ItemDetailScreen() {
 
   const handleShare = useCallback(async () => {
     if (!item) return;
+    HAPTIC.tap();
     const message = buildShareMessage(item);
     try {
       await Share.share({
@@ -45,6 +48,18 @@ export default function ItemDetailScreen() {
       // User cancelled or error — silent.
     }
   }, [item]);
+
+  const handleMarkWornWithHaptic = useCallback(() => {
+    if (!item) return;
+    HAPTIC.success();
+    markWorn(item.id);
+  }, [item, markWorn]);
+
+  const handleToggleFavoriteWithHaptic = useCallback(() => {
+    if (!item) return;
+    HAPTIC.selection();
+    toggleFavorite(item.id);
+  }, [item, toggleFavorite]);
 
   const handleDelete = useCallback(() => {
     if (!item) return;
@@ -114,18 +129,24 @@ export default function ItemDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Photo */}
-        <View style={[styles.photoWrap, { backgroundColor: scheme === 'light' ? '#f0f0f0' : '#1f1f1f' }]}>
+        {/* Photo with hero-style ZoomIn entrance */}
+        <Animated.View
+          entering={ZoomIn.springify().damping(15).stiffness(140)}
+          style={[styles.photoWrap, { backgroundColor: scheme === 'light' ? '#f0f0f0' : '#1f1f1f' }]}
+        >
           <Image
             source={{ uri: displayedUri }}
             style={styles.photo}
             contentFit="contain"
             transition={150}
           />
-        </View>
+        </Animated.View>
 
-        {/* Title + main meta */}
-        <View style={styles.metaBlock}>
+        {/* Title + main meta — staggered fade-in-up after photo */}
+        <Animated.View
+          entering={FadeInDown.springify().damping(18).stiffness(160).delay(staggerDelay(1, 80))}
+          style={styles.metaBlock}
+        >
           <ThemedText style={styles.title}>{title}</ThemedText>
           <View style={styles.colorsRow}>
             {item.colors.map((c) => (
@@ -145,7 +166,7 @@ export default function ItemDetailScreen() {
               Saisons : {item.seasons.map((s) => SEASON_LABELS_FR[s]).join(', ')}
             </ThemedText>
           )}
-        </View>
+        </Animated.View>
 
         {/* Optional details (brand / size / price) */}
         {(item.brand || item.size || item.purchasePrice != null) && (
@@ -192,7 +213,7 @@ export default function ItemDetailScreen() {
       >
         <Pressable
           style={[styles.markWornBtn, { backgroundColor: tint }]}
-          onPress={() => markWorn(item.id)}
+          onPress={handleMarkWornWithHaptic}
         >
           <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
           <ThemedText style={styles.markWornText}>Marquer comme porté</ThemedText>
@@ -202,7 +223,7 @@ export default function ItemDetailScreen() {
             icon={item.isFavorite ? 'star' : 'star-outline'}
             color={item.isFavorite ? '#f1c40f' : text}
             label="Favori"
-            onPress={() => toggleFavorite(item.id)}
+            onPress={handleToggleFavoriteWithHaptic}
           />
           <IconAction
             icon="share-outline"

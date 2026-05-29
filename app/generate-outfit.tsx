@@ -3,7 +3,10 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { HAPTIC, staggerDelay } from '@/constants/motion';
 
 import { Chip } from '@/components/chip';
 import { SectionHeader } from '@/components/section-header';
@@ -75,6 +78,7 @@ export default function GenerateOutfitScreen() {
     }
     setResult(next);
     setPreviousIds([]);
+    HAPTIC.medium();
   }, [items, occasion, seasons]);
 
   const handleRegenerate = useCallback(() => {
@@ -102,10 +106,12 @@ export default function GenerateOutfitScreen() {
     }
     setPreviousIds((prev) => [...prev, pivot]);
     setResult(next);
+    HAPTIC.tap();
   }, [items, occasion, seasons, result, previousIds, handleGenerate]);
 
   const handleSave = useCallback(() => {
     if (!result) return;
+    HAPTIC.success();
     addOutfit({
       itemIds: result.itemIds,
       seasons,
@@ -179,8 +185,17 @@ export default function GenerateOutfitScreen() {
               {resolvedItems.length} pièces · Harmonie {result.score.toFixed(1)}
             </ThemedText>
             <View style={styles.outfitStack}>
-              {resolvedItems.map((it) => (
-                <OutfitItemRow key={it.id} item={it} />
+              {resolvedItems.map((it, i) => (
+                <Animated.View
+                  // Re-key on result so the cascade re-fires on each regenerate
+                  key={`${result.itemIds.join('-')}-${it.id}`}
+                  entering={FadeInDown.springify()
+                    .damping(14)
+                    .stiffness(180)
+                    .delay(staggerDelay(i, 120, 800))}
+                >
+                  <OutfitItemRow item={it} />
+                </Animated.View>
               ))}
             </View>
             <Pressable
