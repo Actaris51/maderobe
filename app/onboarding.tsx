@@ -10,12 +10,24 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { HAPTIC, SPRING } from '@/constants/motion';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSettingsStore } from '@/stores/settings-store';
+
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Slide>);
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -55,12 +67,17 @@ export default function OnboardingScreen() {
   const [page, setPage] = useState(0);
   const listRef = useRef<FlatList<Slide>>(null);
 
+  // Shared scroll position for parallax
+  const scrollX = useSharedValue(0);
+
   const finish = () => {
+    HAPTIC.success();
     setSetting('hasSeenOnboarding', true);
     router.replace('/');
   };
 
   const next = () => {
+    HAPTIC.medium();
     if (page < SLIDES.length - 1) {
       const nextPage = page + 1;
       listRef.current?.scrollToIndex({ index: nextPage, animated: true });
@@ -70,10 +87,20 @@ export default function OnboardingScreen() {
     }
   };
 
+  // Track scroll for parallax + dots
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+    },
+  });
+
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offset = e.nativeEvent.contentOffset.x;
     const newPage = Math.round(offset / SCREEN_WIDTH);
-    if (newPage !== page) setPage(newPage);
+    if (newPage !== page) {
+      setPage(newPage);
+      HAPTIC.selection();
+    }
   };
 
   return (
@@ -86,23 +113,20 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Slides */}
-      <FlatList
+      <AnimatedFlatList
         ref={listRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         data={SLIDES}
         keyExtractor={(s) => s.title}
-        onScroll={onScroll}
+        onScroll={(event) => {
+          scrollHandler(event as unknown as Parameters<typeof scrollHandler>[0]);
+          onScroll(event as NativeSyntheticEvent<NativeScrollEvent>);
+        }}
         scrollEventThrottle={16}
-        renderItem={({ item }) => (
-          <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-            <View style={[styles.iconWrap, { backgroundColor: tint + '15' }]}>
-              <Ionicons name={item.icon} size={64} color={tint} />
-            </View>
-            <ThemedText style={styles.title}>{item.title}</ThemedText>
-            <ThemedText style={styles.subtitle}>{item.subtitle}</ThemedText>
-          </View>
+        renderItem={({ item, index }) => (
+          <Slide slide={item} index={index} scrollX={scrollX} tint={tint} />
         )}
       />
 
@@ -129,6 +153,108 @@ export default function OnboardingScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Slide with parallax: icon moves at -0.4x scroll speed (counter-direction)
+// title at -0.15x, subtitle at -0.08x — creates depth perception.
+// ---------------------------------------------------------------------------
+
+function Slide({
+  slide,
+  index,
+  scrollX,
+  tint,
+}: {
+  slide: Slide;
+  index: number;
+  scrollX: ReturnType<typeof useSharedValue<number>>;
+  tint: string;
+}) {
+  const inputRange = [
+    (index - 1) * SCREEN_WIDTH,
+    index * SCREEN_WIDTH,
+    (index + 1) * SCREEN_WIDTH,
+  ];
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: interpolate(
+          scrollX.value,
+          inputRange,
+          [SCREEN_WIDTH * 0.35, 0, -SCREEN_WIDTH * 0.35],
+          Extrapolation.CLAMP,
+        ),
+      },
+      {
+        scale: interpolate(
+          scrollX.value,
+          inputRange,
+          [0.7, 1, 0.7],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+    opacity: interpolate(
+      scrollX.value,
+      inputRange,
+      [0.4, 1, 0.4],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  const titleStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: interpolate(
+          scrollX.value,
+          inputRange,
+          [SCREEN_WIDTH * 0.15, 0, -SCREEN_WIDTH * 0.15],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+    opacity: interpolate(
+      scrollX.value,
+      inputRange,
+      [0, 1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  const subtitleStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: interpolate(
+          scrollX.value,
+          inputRange,
+          [SCREEN_WIDTH * 0.08, 0, -SCREEN_WIDTH * 0.08],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+    opacity: interpolate(
+      scrollX.value,
+      inputRange,
+      [0, 1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  return (
+    <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
+      <Animated.View style={[styles.iconWrap, { backgroundColor: tint + '15' }, iconStyle]}>
+        <Ionicons name={slide.icon} size={64} color={tint} />
+      </Animated.View>
+      <Animated.Text style={[styles.title, titleStyle]}>
+        {slide.title}
+      </Animated.Text>
+      <Animated.Text style={[styles.subtitle, subtitleStyle]}>
+        {slide.subtitle}
+      </Animated.Text>
+    </View>
   );
 }
 

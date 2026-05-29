@@ -1,11 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { HAPTIC, SPRING } from '@/constants/motion';
 import { TYPE_LABELS_FR } from '@/constants/taxonomy';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -188,7 +195,7 @@ export default function OutfitOfTheDayScreen() {
           ‹ › pour changer un item · 🔒 pour le verrouiller
         </ThemedText>
 
-        {slotTypesPresent.map((type) => {
+        {slotTypesPresent.map((type, slotIndex) => {
           const slot = slots[type];
           const item = slot.candidates[slot.currentIdx];
           if (!item) return null;
@@ -197,9 +204,10 @@ export default function OutfitOfTheDayScreen() {
               key={type}
               type={type}
               item={item}
-              candidatesCount={slot.candidates.length}
+              candidates={slot.candidates}
               currentIdx={slot.currentIdx}
               locked={slot.locked}
+              slotIndex={slotIndex}
               onPrev={() => iterate(type, -1)}
               onNext={() => iterate(type, 1)}
               onToggleLock={() => toggleLock(type)}
@@ -243,21 +251,32 @@ export default function OutfitOfTheDayScreen() {
 // Slot row
 // ---------------------------------------------------------------------------
 
+/**
+ * SlotRow with a "slot machine" reveal on first mount.
+ *
+ * On mount, after a staggered delay (slotIndex × 250 ms so slots reveal one
+ * after another), it cycles rapidly through `candidates`, decelerates, then
+ * settles on the final `item`. A medium haptic fires when it stops.
+ *
+ * Subsequent user iterations (prev/next arrows) update `item` directly without
+ * re-triggering the spin.
+ */
 function SlotRow({
-  type,
   item,
-  candidatesCount,
+  candidates,
   currentIdx,
   locked,
+  slotIndex,
   onPrev,
   onNext,
   onToggleLock,
 }: {
   type: string;
   item: ClothingItem;
-  candidatesCount: number;
+  candidates: ClothingItem[];
   currentIdx: number;
   locked: boolean;
+  slotIndex: number;
   onPrev: () => void;
   onNext: () => void;
   onToggleLock: () => void;
@@ -265,9 +284,76 @@ function SlotRow({
   const scheme = useColorScheme() ?? 'light';
   const text = Colors[scheme].text;
   const tint = Colors[scheme].tint;
+  const candidatesCount = candidates.length;
   const arrowColor = locked ? text + '40' : text;
   const canIterate = candidatesCount > 1 && !locked;
-  const uri = item.photoBgRemovedUri ?? item.photoUri;
+
+  // ---- Slot-machine state ----
+  const [displayedItem, setDisplayedItem] = useState<ClothingItem>(item);
+  const [isSpinning, setIsSpinning] = useState(true);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Photo "tilt" pulse on each cycle (subtle Y translate + scale)
+  const tilt = useSharedValue(0);
+  const photoStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: tilt.value * -6 }, { scale: 1 + tilt.value * 0.02 }],
+  }));
+
+  useEffect(() => {
+    if (candidatesCount <= 1) {
+      // No spin needed if only one candidate
+      setIsSpinning(false);
+      setDisplayedItem(item);
+      return;
+    }
+
+    let counter = 0;
+    let intervalMs = 55;
+    const totalCycles = 9 + slotIndex * 2; // later slots spin slightly longer
+
+    const tick = () => {
+      counter += 1;
+      // Pick a candidate at random (excluding the current displayed one for visual variety)
+      const others = candidates.filter((c) => c.id !== displayedItem.id);
+      const pool = others.length > 0 ? others : candidates;
+      const next = pool[Math.floor(Math.random() * pool.length)];
+      setDisplayedItem(next);
+      // Tilt pulse: 1 → 0 quickly
+      tilt.value = withTiming(1, { duration: 20 }, () => {
+        tilt.value = withTiming(0, { duration: 100 });
+      });
+
+      if (counter < totalCycles - 3) {
+        timeoutRef.current = setTimeout(tick, intervalMs);
+      } else if (counter < totalCycles) {
+        // Decelerate
+        intervalMs += 70;
+        timeoutRef.current = setTimeout(tick, intervalMs);
+      } else {
+        // Settle on the actual final item
+        setDisplayedItem(item);
+        setIsSpinning(false);
+        tilt.value = withSpring(0, SPRING.bouncy);
+        HAPTIC.medium();
+      }
+    };
+
+    // Initial stagger per slot
+    timeoutRef.current = setTimeout(tick, slotIndex * 250 + 100);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Once the spin is done, mirror the parent's `item` updates (arrow navigation)
+  useEffect(() => {
+    if (!isSpinning) setDisplayedItem(item);
+  }, [item, isSpinning]);
+
+  const renderedItem = isSpinning ? displayedItem : item;
+  const uri = renderedItem.photoBgRemovedUri ?? renderedItem.photoUri;
 
   return (
     <View style={[slotStyles.wrap, { borderColor: text + '15' }]}>
@@ -276,35 +362,37 @@ function SlotRow({
           {TYPE_LABELS_FR[item.type]}
         </ThemedText>
         <ThemedText style={slotStyles.counter}>
-          {currentIdx + 1} / {candidatesCount}
+          {isSpinning ? '…' : `${currentIdx + 1} / ${candidatesCount}`}
         </ThemedText>
       </View>
       <View style={slotStyles.photoRow}>
         <Pressable
           onPress={onPrev}
-          disabled={!canIterate}
+          disabled={!canIterate || isSpinning}
           hitSlop={10}
-          style={[slotStyles.arrowBtn, !canIterate && { opacity: 0.3 }]}
+          style={[slotStyles.arrowBtn, (!canIterate || isSpinning) && { opacity: 0.3 }]}
         >
           <Ionicons name="chevron-back" size={28} color={arrowColor} />
         </Pressable>
         <View style={[slotStyles.photoFrame, { backgroundColor: scheme === 'light' ? '#f0f0f0' : '#1f1f1f' }]}>
-          <Image source={{ uri }} style={slotStyles.photo} contentFit="contain" transition={150} />
+          <Animated.View style={[StyleSheet.absoluteFill, photoStyle]}>
+            <Image source={{ uri }} style={slotStyles.photo} contentFit="contain" transition={80} />
+          </Animated.View>
         </View>
         <Pressable
           onPress={onNext}
-          disabled={!canIterate}
+          disabled={!canIterate || isSpinning}
           hitSlop={10}
-          style={[slotStyles.arrowBtn, !canIterate && { opacity: 0.3 }]}
+          style={[slotStyles.arrowBtn, (!canIterate || isSpinning) && { opacity: 0.3 }]}
         >
           <Ionicons name="chevron-forward" size={28} color={arrowColor} />
         </Pressable>
       </View>
       <View style={slotStyles.bottomRow}>
         <ThemedText style={slotStyles.itemName} numberOfLines={1}>
-          {item.subType ?? TYPE_LABELS_FR[item.type]}
+          {isSpinning ? '…' : (renderedItem.subType ?? TYPE_LABELS_FR[renderedItem.type])}
         </ThemedText>
-        <Pressable onPress={onToggleLock} hitSlop={10} style={slotStyles.lockBtn}>
+        <Pressable onPress={onToggleLock} hitSlop={10} style={slotStyles.lockBtn} disabled={isSpinning}>
           <Ionicons
             name={locked ? 'lock-closed' : 'lock-open-outline'}
             size={20}

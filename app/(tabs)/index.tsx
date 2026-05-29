@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fab } from '@/components/fab';
@@ -16,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FilterSheet } from '@/components/wardrobe/filter-sheet';
 import { ItemCarouselCard } from '@/components/wardrobe/item-carousel-card';
 import { ItemThumbnail } from '@/components/wardrobe/item-thumbnail';
+import { HAPTIC } from '@/constants/motion';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
@@ -78,7 +80,10 @@ export default function DressingScreen() {
         <ThemedText style={styles.appTitle}>Maderobe</ThemedText>
         <View style={styles.headerActions}>
           <Pressable
-            onPress={() => setSetting('libraryLayout', layout === 'grid' ? 'carousel' : 'grid')}
+            onPress={() => {
+              HAPTIC.selection();
+              setSetting('libraryLayout', layout === 'grid' ? 'carousel' : 'grid');
+            }}
             hitSlop={8}
             style={styles.iconBtn}
           >
@@ -143,10 +148,19 @@ export default function DressingScreen() {
             setSort('recent');
           }}
         />
-      ) : layout === 'grid' ? (
-        <DressingGrid items={filtered} onItemPress={handleOpenItem} />
       ) : (
-        <DressingCarousel items={filtered} onItemPress={handleOpenItem} />
+        <Animated.View
+          key={layout}
+          style={styles.layoutWrap}
+          entering={FadeIn.duration(280)}
+          exiting={FadeOut.duration(160)}
+        >
+          {layout === 'grid' ? (
+            <DressingGrid items={filtered} onItemPress={handleOpenItem} />
+          ) : (
+            <DressingCarousel items={filtered} onItemPress={handleOpenItem} />
+          )}
+        </Animated.View>
       )}
 
       <Fab onPress={handleAdd} />
@@ -311,6 +325,9 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
+  },
+  layoutWrap: {
+    flex: 1,
   },
   // Grid
   gridContent: {
