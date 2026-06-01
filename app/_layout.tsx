@@ -3,18 +3,16 @@ import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
-import { enableScreens } from 'react-native-screens';
-
-// Workaround pour le bug iOS 26 + new architecture qui crashe au boot dans
-// RNSTabBarController.updateTabBarAppearance (NSException non catched →
-// SIGABRT via ObjCTurboModule::performVoidMethodInvocation).
-// Voir react-native-screens#3940 et facebook/react-native#54859.
-// À retirer quand RN/react-native-screens publie un fix.
-enableScreens(false);
 
 import { MilestoneCelebration } from '@/components/milestone-celebration';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSettingsStore } from '@/stores/settings-store';
+
+// Note: enableScreens(false) avait ete ajoute en build 7 pour contourner le
+// crash RNSTabBarController iOS 26. Mais il cassait expo-router (Stack render
+// vide -> splash bloque). On l'a retire et on s'appuie maintenant sur le patch
+// RCTTurboModule.mm qui catch+log les NSExceptions des void methods, ce qui
+// couvre RNSTabBarController et tous les autres TurboModules d'un coup.
 
 export const unstable_settings = {
   anchor: '(tabs)',
