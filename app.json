@@ -68,7 +68,15 @@
           "locationWhenInUsePermission": "Maderobe utilise ta position pour adapter les suggestions de tenues à la météo locale. Tu peux refuser et choisir une ville à la main."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "buildReactNativeFromSource": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

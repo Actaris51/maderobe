@@ -1,0 +1,24 @@
+diff --git a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+index 2a67797..d79fe23 100644
+--- a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
++++ b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+@@ -435,7 +435,18 @@ void ObjCTurboModule::performVoidMethodInvocation(
+     @try {
+       [inv invokeWithTarget:strongModule];
+     } @catch (NSException *exception) {
+-      throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
++      // iOS 26 workaround (Maderobe): re-throwing the converted JSError from an
++      // async void method ends up on a GCD queue where nothing can catch it,
++      // which terminates the app via std::__terminate -> abort. iOS 18 happened
++      // to swallow such exceptions silently; iOS 26 no longer does. The void
++      // return type means we have nothing useful to surface to JS anyway, so
++      // we log loudly and continue. See facebook/react-native#54859.
++      RCTLogError(
++          @"[Maderobe iOS 26 patch] Void method '%s' of module '%s' threw NSException: %@ (reason: %@). Suppressed to avoid SIGABRT.",
++          methodName,
++          moduleName,
++          [exception name],
++          [exception reason]);
+     } @finally {
+       [retainedObjectsForInvocation removeAllObjects];
+     }
