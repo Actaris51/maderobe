@@ -45,29 +45,34 @@ export function ItemThumbnail({ item, size, onPress, index = 0 }: Props) {
   };
 
   return (
+    // Reanimated 4: outer view owns the layout animation (FadeIn stagger),
+    // inner view owns the animated transform (press scale). Combining both
+    // on the same Animated.View triggers a warning and can blank the screen.
     <Animated.View
       entering={FadeIn.delay(staggerDelay(index)).duration(350)}
-      style={[styles.wrap, { width: size, height: size }, animatedPress]}
+      style={[styles.wrap, { width: size, height: size }]}
     >
-      <Pressable
-        onPress={handlePress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={styles.pressable}
-      >
-        <Image
-          source={{ uri }}
-          style={styles.img}
-          contentFit="cover"
-          transition={120}
-          cachePolicy="memory-disk"
-        />
-        {item.isFavorite && (
-          <View style={[styles.favBadge, { backgroundColor: Colors[scheme].background }]}>
-            <ThemedText style={styles.fav}>★</ThemedText>
-          </View>
-        )}
-      </Pressable>
+      <Animated.View style={[styles.fill, animatedPress]}>
+        <Pressable
+          onPress={handlePress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={styles.pressable}
+        >
+          <Image
+            source={{ uri }}
+            style={styles.img}
+            contentFit="cover"
+            transition={120}
+            cachePolicy="memory-disk"
+          />
+          {item.isFavorite && (
+            <View style={[styles.favBadge, { backgroundColor: Colors[scheme].background }]}>
+              <ThemedText style={styles.fav}>★</ThemedText>
+            </View>
+          )}
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -78,6 +83,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#f0f0f0',
     position: 'relative',
+  },
+  fill: {
+    width: '100%',
+    height: '100%',
   },
   pressable: {
     width: '100%',

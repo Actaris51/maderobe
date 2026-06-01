@@ -13,21 +13,16 @@ import {
 import Animated, {
   Extrapolation,
   interpolate,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { HAPTIC, SPRING } from '@/constants/motion';
+import { HAPTIC } from '@/constants/motion';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSettingsStore } from '@/stores/settings-store';
-
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Slide>);
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -87,14 +82,18 @@ export default function OnboardingScreen() {
     }
   };
 
-  // Track scroll for parallax + dots
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
-    },
-  });
+  // Push scroll position from JS thread into a SharedValue so the Slide
+  // components' useAnimatedStyle can read it for parallax.
+  // We do NOT use useAnimatedScrollHandler here because Reanimated 4 returns
+  // an object that doesn't play nicely with Animated.createAnimatedComponent
+  // wrapping FlatList (TypeError: scrollHandler is not a function). For a
+  // 3-page swipe the JS-thread update path is plenty smooth.
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollX.value = e.nativeEvent.contentOffset.x;
+  };
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // Detect page change for dots + haptic at scroll settle.
+  const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offset = e.nativeEvent.contentOffset.x;
     const newPage = Math.round(offset / SCREEN_WIDTH);
     if (newPage !== page) {
@@ -113,17 +112,15 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Slides */}
-      <AnimatedFlatList
+      <FlatList
         ref={listRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         data={SLIDES}
         keyExtractor={(s) => s.title}
-        onScroll={(event) => {
-          scrollHandler(event as unknown as Parameters<typeof scrollHandler>[0]);
-          onScroll(event as NativeSyntheticEvent<NativeScrollEvent>);
-        }}
+        onScroll={handleScroll}
+        onMomentumScrollEnd={onMomentumScrollEnd}
         scrollEventThrottle={16}
         renderItem={({ item, index }) => (
           <Slide slide={item} index={index} scrollX={scrollX} tint={tint} />

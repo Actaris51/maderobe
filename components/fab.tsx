@@ -78,25 +78,31 @@ export function Fab({ onPress, label = '+', bottom = 24 }: Props) {
 
   return (
     <View style={[styles.wrap, { bottom }]} pointerEvents="box-none">
+      {/* Reanimated 4 requires layout animations (entering/exiting) and
+          animated styles (transform/scale via useAnimatedStyle) to live on
+          DIFFERENT Animated.Views, otherwise they conflict and the whole
+          subtree can render blank. Outer = layout (ZoomIn on mount).
+          Inner = press scale + rotation kick. */}
       <Animated.View
         entering={ZoomIn.springify().damping(11).stiffness(220).delay(150)}
-        style={btnStyle}
       >
-        <View style={styles.outer}>
-          {/* Ripple layer (behind the button) */}
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.ripple, { backgroundColor: tint }, rippleStyle]}
-          />
-          <Pressable
-            onPress={handlePress}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            style={[styles.btn, { backgroundColor: tint }]}
-          >
-            <ThemedText style={styles.label}>{label}</ThemedText>
-          </Pressable>
-        </View>
+        <Animated.View style={btnStyle}>
+          <View style={styles.outer}>
+            {/* Ripple layer (behind the button) */}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.ripple, { backgroundColor: tint }, rippleStyle]}
+            />
+            <Pressable
+              onPress={handlePress}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              style={[styles.btn, { backgroundColor: tint }]}
+            >
+              <ThemedText style={styles.label}>{label}</ThemedText>
+            </Pressable>
+          </View>
+        </Animated.View>
       </Animated.View>
     </View>
   );
