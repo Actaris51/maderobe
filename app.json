@@ -79,13 +79,6 @@
         "projectId": "38f23ee2-cc98-4862-bf9d-f7af73f909e7"
       }
     },
-    "owner": "actaris51",
-    "runtimeVersion": {
-      "policy": "fingerprint"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/38f23ee2-cc98-4862-bf9d-f7af73f909e7",
-      "fallbackToCacheTimeout": 0
-    }
+    "owner": "actaris51"
   }
 }
