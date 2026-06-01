@@ -1,5 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { router, Stack } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
@@ -20,6 +20,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
 
   // Wait for the persisted settings to hydrate before deciding whether to
   // route to onboarding. Avoids a flash of the Dressing tab on first launch.
@@ -30,11 +31,27 @@ export default function RootLayout() {
     return unsub;
   }, []);
 
+  // Wait until expo-router's navigation tree is mounted before issuing a
+  // programmatic navigation. On iOS 26 + new architecture the Stack registers
+  // with the router slightly later than on iOS 18, so calling router.replace
+  // straight from a [hydrated] effect would assert "Attempted to navigate
+  // before mounting the Root Layout component" and silently fail in
+  // production builds (= app stuck on splash). We gate on rootNavState.key
+  // AND defer one event-loop turn via setTimeout(0): even when the root
+  // navigator reports a key, expo-router 6 may still be wiring up its first
+  // screen during the same microtask, so giving it one more turn is the
+  // belt-and-braces fix.
+  const rootNavState = useRootNavigationState();
+  const isNavReady = !!rootNavState?.key;
+
   useEffect(() => {
-    if (hydrated && !useSettingsStore.getState().hasSeenOnboarding) {
-      router.replace('/onboarding' as never);
-    }
-  }, [hydrated]);
+    if (!isNavReady || !hydrated) return;
+    if (useSettingsStore.getState().hasSeenOnboarding) return;
+    const t = setTimeout(() => {
+      router.replace('/onboarding');
+    }, 0);
+    return () => clearTimeout(t);
+  }, [isNavReady, hydrated, router]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
