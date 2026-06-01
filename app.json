@@ -67,7 +67,8 @@
         {
           "locationWhenInUsePermission": "Maderobe utilise ta position pour adapter les suggestions de tenues à la météo locale. Tu peux refuser et choisir une ville à la main."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
