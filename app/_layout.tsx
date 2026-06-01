@@ -3,6 +3,14 @@ import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
+import { enableScreens } from 'react-native-screens';
+
+// Workaround pour le bug iOS 26 + new architecture qui crashe au boot dans
+// RNSTabBarController.updateTabBarAppearance (NSException non catched →
+// SIGABRT via ObjCTurboModule::performVoidMethodInvocation).
+// Voir react-native-screens#3940 et facebook/react-native#54859.
+// À retirer quand RN/react-native-screens publie un fix.
+enableScreens(false);
 
 import { MilestoneCelebration } from '@/components/milestone-celebration';
 import { useColorScheme } from '@/hooks/use-color-scheme';
