@@ -15,10 +15,23 @@
     "production": {
       "channel": "production",
       "autoIncrement": true
+    },
+    "devclient-tf": {
+      "developmentClient": true,
+      "distribution": "store",
+      "channel": "production",
+      "autoIncrement": true
     }
   },
   "submit": {
     "production": {
+      "ios": {
+        "appleId": "julien1810@gmail.com",
+        "ascAppId": "6771757717",
+        "appleTeamId": "M3TR3TX5W6"
+      }
+    },
+    "devclient-tf": {
       "ios": {
         "appleId": "julien1810@gmail.com",
         "ascAppId": "6771757717",
