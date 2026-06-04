@@ -9,7 +9,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { HAPTIC } from '@/constants/motion';
@@ -94,21 +94,27 @@ export function CameraWithGuide({ visible, type, onCapture, onClose }: Props) {
   if (!permission.granted) {
     return (
       <Modal animationType="slide" presentationStyle="fullScreen" visible>
-        <SafeAreaView style={[styles.fullscreen, { backgroundColor: '#000' }]}>
-          <View style={styles.permWrap}>
-            <Ionicons name="camera-outline" size={64} color="#fff" />
-            <ThemedText style={[styles.permTitle, { color: '#fff' }]}>
-              Maderobe a besoin de la caméra
-            </ThemedText>
-            <ThemedText style={[styles.permText, { color: '#fff' }]}>
-              Pour prendre une photo de ton vêtement avec le gabarit, autorise
-              l&apos;accès dans Réglages → Maderobe → Caméra.
-            </ThemedText>
-            <Pressable style={styles.permButton} onPress={onClose}>
-              <ThemedText style={styles.permButtonText}>Fermer</ThemedText>
-            </Pressable>
-          </View>
-        </SafeAreaView>
+        {/* SafeAreaProvider must wrap modal contents — Modal renders in a
+            separate native view tree that doesn't inherit the app's
+            SafeAreaProvider context. Without this, SafeAreaView edges fall
+            back to 0 insets and our top bar collides with the Dynamic Island. */}
+        <SafeAreaProvider>
+          <SafeAreaView style={[styles.fullscreen, { backgroundColor: '#000' }]}>
+            <View style={styles.permWrap}>
+              <Ionicons name="camera-outline" size={64} color="#fff" />
+              <ThemedText style={[styles.permTitle, { color: '#fff' }]}>
+                Maderobe a besoin de la caméra
+              </ThemedText>
+              <ThemedText style={[styles.permText, { color: '#fff' }]}>
+                Pour prendre une photo de ton vêtement avec le gabarit, autorise
+                l&apos;accès dans Réglages → Maderobe → Caméra.
+              </ThemedText>
+              <Pressable style={styles.permButton} onPress={onClose}>
+                <ThemedText style={styles.permButtonText}>Fermer</ThemedText>
+              </Pressable>
+            </View>
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     );
   }
@@ -116,28 +122,30 @@ export function CameraWithGuide({ visible, type, onCapture, onClose }: Props) {
   // Normal: camera + overlay ---------------------------------------------------
   return (
     <Modal animationType="slide" presentationStyle="fullScreen" visible>
-      <View style={[styles.fullscreen, { backgroundColor: '#000' }]}>
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing={facing}
-        />
+      {/* SafeAreaProvider required — see comment in the permission branch. */}
+      <SafeAreaProvider>
+        <View style={[styles.fullscreen, { backgroundColor: '#000' }]}>
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing={facing}
+          />
 
-        {/* Top bar: close + type label + flip-camera */}
-        <SafeAreaView edges={['top']} style={styles.topBarSafe}>
-          <View style={styles.topBar}>
-            <Pressable hitSlop={12} onPress={onClose} style={styles.topBtn}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </Pressable>
-            <View style={styles.topTitleWrap}>
-              <ThemedText style={styles.topTitleSmall}>Pose pour</ThemedText>
-              <ThemedText style={styles.topTitle}>{guide.label}</ThemedText>
+          {/* Top bar: close + type label + flip-camera */}
+          <SafeAreaView edges={['top']} style={styles.topBarSafe}>
+            <View style={styles.topBar}>
+              <Pressable hitSlop={12} onPress={onClose} style={styles.topBtn}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </Pressable>
+              <View style={styles.topTitleWrap}>
+                <ThemedText style={styles.topTitleSmall}>Pose pour</ThemedText>
+                <ThemedText style={styles.topTitle}>{guide.label}</ThemedText>
+              </View>
+              <Pressable hitSlop={12} onPress={toggleFacing} style={styles.topBtn}>
+                <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+              </Pressable>
             </View>
-            <Pressable hitSlop={12} onPress={toggleFacing} style={styles.topBtn}>
-              <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
-            </Pressable>
-          </View>
-        </SafeAreaView>
+          </SafeAreaView>
 
         {/* Silhouette overlay (giant Ionicon, low opacity). pointerEvents=none
             so taps still go through to the camera area. */}
@@ -183,7 +191,8 @@ export function CameraWithGuide({ visible, type, onCapture, onClose }: Props) {
             <View style={styles.shutterSide} />
           </View>
         </SafeAreaView>
-      </View>
+        </View>
+      </SafeAreaProvider>
     </Modal>
   );
 }
