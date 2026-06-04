@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -39,8 +39,15 @@ export function CameraWithGuide({ visible, type, onCapture, onClose }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView | null>(null);
   const [taking, setTaking] = useState(false);
+  /** Front (selfie) or back (default) camera. Toggled via the flip button. */
+  const [facing, setFacing] = useState<CameraType>('back');
 
   const guide = PHOTO_GUIDES[type];
+
+  const toggleFacing = () => {
+    HAPTIC.selection();
+    setFacing((f) => (f === 'back' ? 'front' : 'back'));
+  };
 
   // Request camera permission when the modal opens.
   useEffect(() => {
@@ -113,10 +120,10 @@ export function CameraWithGuide({ visible, type, onCapture, onClose }: Props) {
         <CameraView
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
-          facing="back"
+          facing={facing}
         />
 
-        {/* Top bar: close + type label */}
+        {/* Top bar: close + type label + flip-camera */}
         <SafeAreaView edges={['top']} style={styles.topBarSafe}>
           <View style={styles.topBar}>
             <Pressable hitSlop={12} onPress={onClose} style={styles.topBtn}>
@@ -126,7 +133,9 @@ export function CameraWithGuide({ visible, type, onCapture, onClose }: Props) {
               <ThemedText style={styles.topTitleSmall}>Pose pour</ThemedText>
               <ThemedText style={styles.topTitle}>{guide.label}</ThemedText>
             </View>
-            <View style={styles.topBtn} />
+            <Pressable hitSlop={12} onPress={toggleFacing} style={styles.topBtn}>
+              <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+            </Pressable>
           </View>
         </SafeAreaView>
 
