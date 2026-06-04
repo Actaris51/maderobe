@@ -1,11 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackgroundPicker } from '@/components/background-picker';
+import { FlatLayComposer } from '@/components/flat-lay-composer';
 import { ThemedText } from '@/components/themed-text';
+import {
+  DEFAULT_FLAT_LAY_BACKGROUND,
+  type FlatLayBackground,
+} from '@/constants/flat-lay-backgrounds';
 import {
   OCCASION_LABELS_FR,
   SEASON_LABELS_FR,
@@ -16,6 +22,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useItemsStore } from '@/stores/items-store';
 import { useOutfitsStore } from '@/stores/outfits-store';
 import type { ClothingItem } from '@/types';
+
+const SCREEN_W = Dimensions.get('window').width;
 
 export default function OutfitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,6 +42,9 @@ export default function OutfitDetailScreen() {
     if (!outfit) return [];
     return outfit.itemIds.map((iid) => itemsMap[iid]).filter(Boolean);
   }, [outfit, itemsMap]);
+
+  /** Selected flat-lay background (local state). */
+  const [bg, setBg] = useState<FlatLayBackground>(DEFAULT_FLAT_LAY_BACKGROUND);
 
   const handleMarkWorn = useCallback(() => {
     if (!outfit) return;
@@ -89,6 +100,20 @@ export default function OutfitDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Pinterest-style flat-lay preview of the outfit */}
+        {items.length > 0 && (
+          <View style={styles.flatLayWrap}>
+            <FlatLayComposer
+              items={items}
+              width={SCREEN_W - 32}
+              background={bg}
+              showWatermark
+              animate
+            />
+            <BackgroundPicker selectedId={bg.id} onSelect={setBg} />
+          </View>
+        )}
+
         {/* Items stack */}
         <View style={styles.stack}>
           {items.map((it) => (
@@ -208,6 +233,10 @@ const styles = StyleSheet.create({
   headerBtn: { paddingHorizontal: 8, paddingVertical: 4, width: 50 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '600', textAlign: 'center' },
   scroll: { padding: 16 },
+  flatLayWrap: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   stack: { gap: 8 },
   itemRow: {
     flexDirection: 'row',

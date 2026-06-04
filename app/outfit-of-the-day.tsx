@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -11,7 +11,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackgroundPicker } from '@/components/background-picker';
+import { FlatLayComposer } from '@/components/flat-lay-composer';
 import { ThemedText } from '@/components/themed-text';
+import {
+  DEFAULT_FLAT_LAY_BACKGROUND,
+  type FlatLayBackground,
+} from '@/constants/flat-lay-backgrounds';
 import { HAPTIC, SPRING } from '@/constants/motion';
 import { TYPE_LABELS_FR } from '@/constants/taxonomy';
 import { Colors } from '@/constants/theme';
@@ -25,6 +31,8 @@ import { useOutfitsStore } from '@/stores/outfits-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWeatherStore } from '@/stores/weather-store';
 import type { ClothingItem } from '@/types';
+
+const SCREEN_W = Dimensions.get('window').width;
 
 type Slot = {
   /** Items eligible for this slot (filtered by type and season), sorted by initial harmony score */
@@ -53,6 +61,9 @@ export default function OutfitOfTheDayScreen() {
 
   /** Map of slot type → Slot. Only types that actually have items appear here. */
   const [slots, setSlots] = useState<Record<string, Slot>>({});
+
+  /** Selected flat-lay background (local state; persistence comes in v1.1). */
+  const [bg, setBg] = useState<FlatLayBackground>(DEFAULT_FLAT_LAY_BACKGROUND);
 
   // ----- Build the initial outfit on mount -----
   useEffect(() => {
@@ -191,6 +202,23 @@ export default function OutfitOfTheDayScreen() {
             </ThemedText>
           </View>
         )}
+
+        {/* Flat-lay preview — Pinterest-style composition of the current outfit.
+            Updates live when slots are iterated below. Background selectable
+            via the swatch row underneath. */}
+        {currentItems.length > 0 && (
+          <View style={styles.flatLayWrap}>
+            <FlatLayComposer
+              items={currentItems}
+              width={SCREEN_W - 32}
+              background={bg}
+              showWatermark
+              animate
+            />
+            <BackgroundPicker selectedId={bg.id} onSelect={setBg} />
+          </View>
+        )}
+
         <ThemedText style={styles.tip}>
           ‹ › pour changer un item · 🔒 pour le verrouiller
         </ThemedText>
@@ -470,6 +498,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#00000008',
   },
   scoreText: { fontSize: 14, fontWeight: '500' },
+  flatLayWrap: {
+    marginBottom: 16,
+    alignItems: 'center',
+    gap: 4,
+  },
   actions: {
     paddingHorizontal: 16,
     paddingTop: 12,
