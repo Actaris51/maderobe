@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -12,10 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CameraWithGuide } from '@/components/camera-with-guide';
 import { Chip } from '@/components/chip';
 import { ColorSwatch } from '@/components/color-swatch';
 import { SectionHeader } from '@/components/section-header';
 import { ThemedText } from '@/components/themed-text';
+import { PHOTO_BEST_PRACTICES, PHOTO_GUIDES } from '@/constants/photo-guides';
 import {
   CLOTHING_TYPES_ORDER,
   COLOR_PALETTE,
@@ -33,7 +36,7 @@ import {
 } from '@/constants/taxonomy';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { pickFromLibrary, takePhoto } from '@/lib/image-picker';
+import { pickFromLibrary } from '@/lib/image-picker';
 import { persistImage } from '@/lib/image-storage';
 import vision from '@/modules/maderobe-vision';
 import { useItemsStore } from '@/stores/items-store';
@@ -42,7 +45,29 @@ import type { ClothingType, ItemColor, Pattern, Season } from '@/types';
 // Suppress unused-import warning until we wire occasions into outfit flows
 void OCCASIONS_ORDER;
 
-type Phase = 'photo' | 'attributes';
+/**
+ * Phase 'type'       → user picks the kind of garment first, so the camera
+ *                      overlay can show a matching silhouette guide.
+ * Phase 'photo'      → "Take a photo" (custom camera with silhouette) OR
+ *                      "Pick from library".
+ * Phase 'attributes' → form to fill the rest (motif, colors, material, …).
+ */
+type Phase = 'type' | 'photo' | 'attributes';
+
+/** Types we offer up-front in the type-first picker. We omit "unknown" here:
+ *  users who don't know what to pick can tap "Autre…" which lands on the
+ *  attributes phase with type=unknown and they fill it in. */
+const TYPE_PICKER_ORDER: ClothingType[] = [
+  'top',
+  'bottom',
+  'shoes',
+  'outerwear',
+  'dress',
+  'accessory',
+  'bag',
+  'jewelry',
+  'belt',
+];
 
 const THICKNESS_LABELS = ['Très fin', 'Fin', 'Moyen', 'Épais', 'Très épais'];
 
@@ -51,13 +76,16 @@ export default function AddItemScreen() {
   const tint = Colors[scheme].tint;
   const addItem = useItemsStore((s) => s.add);
 
-  // ----- Phase 1: photo -----
-  const [phase, setPhase] = useState<Phase>('photo');
+  // ----- Phase 1: type-first picker -----
+  const [phase, setPhase] = useState<Phase>('type');
+  // ----- Phase 2: photo -----
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBgRemovedUri, setPhotoBgRemovedUri] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  /** Whether the custom CameraWithGuide modal is open. */
+  const [cameraOpen, setCameraOpen] = useState(false);
 
-  // ----- Phase 2: attributes -----
+  // ----- Phase 3: attributes -----
   const [type, setType] = useState<ClothingType>('unknown');
   const [subType, setSubType] = useState<string>('');
   const [pattern, setPattern] = useState<Pattern>('uni');
@@ -128,19 +156,17 @@ export default function AddItemScreen() {
     }
   }, []);
 
-  const handleTakePhoto = useCallback(async () => {
-    const r = await takePhoto();
-    if (r.cancelled) {
-      if (r.reason === 'permission') {
-        Alert.alert(
-          "Autorisation refusée",
-          "Maderobe a besoin d'accéder à l'appareil photo. Tu peux activer la permission dans les Réglages.",
-        );
-      }
-      return;
-    }
-    handlePhotoChosen(r.uri);
-  }, [handlePhotoChosen]);
+  const handleOpenCamera = useCallback(() => {
+    setCameraOpen(true);
+  }, []);
+
+  const handleCameraCapture = useCallback(
+    (uri: string) => {
+      setCameraOpen(false);
+      handlePhotoChosen(uri);
+    },
+    [handlePhotoChosen],
+  );
 
   const handlePickFromLibrary = useCallback(async () => {
     const r = await pickFromLibrary();
@@ -253,10 +279,82 @@ export default function AddItemScreen() {
   // Render
   // -------------------------------------------------------------------------
 
-  if (phase === 'photo') {
+  // ---- phase === 'type' : type-first picker + best-practice tips ----
+  if (phase === 'type') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: Colors[scheme].background }]}>
         <Header onCancel={() => router.back()} title="Ajouter un vêtement" />
+        <ScrollView contentContainerStyle={styles.typeScrollContent}>
+          <ThemedText style={styles.typeQuestion}>De quoi s&apos;agit-il ?</ThemedText>
+          <ThemedText style={[styles.typeHint, { opacity: 0.6 }]}>
+            On va t&apos;aider à cadrer la photo selon le type.
+          </ThemedText>
+
+          {/* Best-practices card */}
+          <View style={[styles.tipsCard, { backgroundColor: tint + '12', borderColor: tint + '30' }]}>
+            <View style={styles.tipsHeader}>
+              <Ionicons name="bulb-outline" size={18} color={tint} />
+              <ThemedText style={[styles.tipsTitle, { color: tint }]}>
+                Conseils photo
+              </ThemedText>
+            </View>
+            {PHOTO_BEST_PRACTICES.map((tip) => (
+              <View key={tip.text} style={styles.tipRow}>
+                <Ionicons name={tip.icon} size={14} color={Colors[scheme].text + '99'} />
+                <ThemedText style={styles.tipText}>{tip.text}</ThemedText>
+              </View>
+            ))}
+          </View>
+
+          {/* Type grid */}
+          <View style={styles.typeGrid}>
+            {TYPE_PICKER_ORDER.map((t) => {
+              const guide = PHOTO_GUIDES[t];
+              return (
+                <Pressable
+                  key={t}
+                  onPress={() => {
+                    setType(t);
+                    setPhase('photo');
+                  }}
+                  style={({ pressed }) => [
+                    styles.typeTile,
+                    {
+                      borderColor: Colors[scheme].text + '20',
+                      backgroundColor: pressed ? tint + '12' : 'transparent',
+                    },
+                  ]}
+                >
+                  <Ionicons name={guide.icon} size={36} color={tint} />
+                  <ThemedText style={styles.typeTileLabel}>{guide.label}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Other / unknown */}
+          <Pressable
+            onPress={() => {
+              setType('unknown');
+              setPhase('photo');
+            }}
+            style={styles.typeOther}
+          >
+            <ThemedText style={[styles.typeOtherText, { color: tint }]}>
+              Autre / je ne sais pas
+            </ThemedText>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ---- phase === 'photo' : capture or pick (with type known) ----
+  if (phase === 'photo') {
+    const guide = PHOTO_GUIDES[type];
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: Colors[scheme].background }]}>
+        <Header onCancel={() => router.back()} title="Photo" />
         <View style={styles.photoPickerCenter}>
           {analyzing ? (
             <View style={styles.analyzingBox}>
@@ -264,24 +362,51 @@ export default function AddItemScreen() {
               <ThemedText style={styles.analyzingText}>Analyse de la photo…</ThemedText>
             </View>
           ) : (
-            <View style={styles.photoButtons}>
-              <Pressable
-                style={[styles.bigButton, { backgroundColor: tint }]}
-                onPress={handleTakePhoto}
-              >
-                <ThemedText style={styles.bigButtonText}>Prendre une photo</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[styles.bigButton, styles.bigButtonOutline, { borderColor: tint }]}
-                onPress={handlePickFromLibrary}
-              >
-                <ThemedText style={[styles.bigButtonText, { color: tint }]}>
-                  Choisir depuis la galerie
+            <>
+              <View style={styles.photoTypeRecap}>
+                <ThemedText style={[styles.photoTypeRecapLabel, { opacity: 0.6 }]}>
+                  Type sélectionné
                 </ThemedText>
-              </Pressable>
-            </View>
+                <View style={styles.photoTypeRecapRow}>
+                  <Ionicons name={guide.icon} size={20} color={tint} />
+                  <ThemedText style={styles.photoTypeRecapName}>{guide.label}</ThemedText>
+                  <Pressable onPress={() => setPhase('type')} hitSlop={8}>
+                    <ThemedText style={[styles.photoTypeChange, { color: tint }]}>
+                      Changer
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.photoButtons}>
+                <Pressable
+                  style={[styles.bigButton, { backgroundColor: tint }]}
+                  onPress={handleOpenCamera}
+                >
+                  <Ionicons name="camera" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <ThemedText style={styles.bigButtonText}>Prendre une photo</ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.bigButton, styles.bigButtonOutline, { borderColor: tint }]}
+                  onPress={handlePickFromLibrary}
+                >
+                  <Ionicons name="images-outline" size={18} color={tint} style={{ marginRight: 8 }} />
+                  <ThemedText style={[styles.bigButtonText, { color: tint }]}>
+                    Choisir depuis la galerie
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </>
           )}
         </View>
+
+        {/* Custom camera with silhouette overlay matching the selected type */}
+        <CameraWithGuide
+          visible={cameraOpen}
+          type={type}
+          onCapture={handleCameraCapture}
+          onClose={() => setCameraOpen(false)}
+        />
       </SafeAreaView>
     );
   }
@@ -602,12 +727,107 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 60,
   },
+  // Type-first phase
+  typeScrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  typeQuestion: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  typeHint: {
+    fontSize: 14,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  tipsCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    gap: 6,
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  tipsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  tipText: {
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+  },
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  typeTile: {
+    width: '31%',
+    aspectRatio: 1,
+    borderWidth: 1,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 8,
+  },
+  typeTileLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  typeOther: {
+    alignSelf: 'center',
+    paddingVertical: 14,
+  },
+  typeOtherText: {
+    fontSize: 14,
+  },
   // Photo phase
   photoPickerCenter: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+  },
+  photoTypeRecap: {
+    width: '100%',
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  photoTypeRecapLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  photoTypeRecapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  photoTypeRecapName: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  photoTypeChange: {
+    fontSize: 13,
+    marginLeft: 6,
   },
   analyzingBox: {
     alignItems: 'center',
