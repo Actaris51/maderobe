@@ -1,74 +1,91 @@
-<<<<<<< HEAD
-# Welcome to your Expo app 👋
+# Maderobe
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> Wardrobe management app — catalogue your clothes from photos, generate outfit
+> suggestions, pack a smart travel suitcase.
 
-## Get started
+Solo-developed by [Julien Duval](https://github.com/Actaris51). iOS-only at
+launch (Android deferred). 100 % on-device — no tracker, no ads, no account,
+no network call for normal use.
 
-1. Install dependencies
+- **App Store** (FR + US): *coming soon* (build 11 in review at time of writing)
+- **Bundle:** `com.maderobe.app`
+- **Privacy policy** (also served from this repo via GitHub Pages):
+  <https://actaris51.github.io/maderobe/privacy-policy.html>
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## App — Expo SDK 54 + React Native 0.81
 
-   ```bash
-   npx expo start
-   ```
+Source lives at the root of this repo. Tech stack:
 
-In the output, you'll find options to open the app in a
+- **Framework:** Expo SDK 54 + React Native 0.81 + TypeScript
+- **Navigation:** expo-router 6 (file-based)
+- **State:** Zustand + AsyncStorage (persist middleware)
+- **Animation:** react-native-reanimated 4
+- **On-device ML:** local Expo module `MaderobeVision` (Swift) wrapping
+  Apple Vision API (classification + dominant-color extraction +
+  background removal via `VNGenerateForegroundInstanceMaskRequest`)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### Get started
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then either run a dev build (recommended) or use Expo Go:
 
-## Learn more
+```bash
+# Dev build (requires `eas build --profile development` first)
+npx expo start --dev-client --lan
 
-To learn more about developing your project with Expo, look at the following resources:
+# Expo Go (limited — no MaderobeVision native module)
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Project layout
 
-## Join the community
+```
+app/                      # expo-router screens (file-based routing)
+components/               # reusable React components
+constants/                # design system (motion, theme, taxonomy, photo guides)
+hooks/                    # custom React hooks
+lib/                      # pure-JS utilities (color, outfit gen, packing, weather)
+modules/maderobe-vision/  # local Expo module (Swift)
+stores/                   # Zustand stores
+store-assets/             # screenshots + metadata for App Store Connect
+scripts/                  # one-shot Python scripts (icon, screenshots, textures)
+patches/                  # patch-package patches (e.g. iOS 26 TurboModule fix)
+assets/flat-lay/          # procedural background textures (generated)
+index.html + privacy-*    # see "Website" section below — served from repo root via GitHub Pages
+```
 
-Join our community of developers creating universal apps.
+### Building for production
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-=======
-# Maderobe — website (GitHub Pages)
+```bash
+eas build --platform ios --profile production --auto-submit
+```
 
-Files in this folder are meant to be served from
-`https://actaris51.github.io/maderobe/`.
+EAS Free quota is 30 builds/month total across all projects — burns fast on a
+multi-project account, plan accordingly.
 
-## Deployment
+### Notes
 
-The expected target is a public GitHub repo `Actaris51/maderobe` with
-GitHub Pages enabled on the default branch (`main`), root folder.
+- iOS 26 + RN new arch combo requires the `RCTTurboModule.mm` patch in
+  `patches/react-native+0.81.5.patch` (applied via `patch-package` post-install)
+  + `buildReactNativeFromSource: true` in `expo-build-properties`. See
+  `shared-knowledge/projects.md` (in the parent Claude knowledge base) for the
+  full backstory.
+- `expo-updates` is intentionally NOT installed in the shipped binary. It will
+  be re-added in a future build with proper `eas update:configure` to enable
+  OTA updates without burning EAS builds.
 
-### One-time setup
+---
 
-1. Create the repo on GitHub: <https://github.com/new>
-   - Owner: `Actaris51`
-   - Name: `maderobe`
-   - Public
-   - Initialize with a README (optional)
-2. Settings → Pages → Source = "Deploy from a branch" → branch `main`, folder `/`
-3. Push the contents of this `website/` folder to the root of that repo.
+## Website (GitHub Pages)
+
+A handful of static HTML files at the repo root are served from
+<https://actaris51.github.io/maderobe/> (GitHub Pages on the `main` branch
+root folder). They host the app's landing page and the App Store privacy URL.
 
 ### Files
 
@@ -81,12 +98,18 @@ GitHub Pages enabled on the default branch (`main`), root folder.
 
 ### Updating
 
-Edit the HTML files, push to the `main` branch of `Actaris51/maderobe`.
-GitHub Pages redeploys automatically within 1-2 minutes.
+Edit the HTML files, push to the `main` branch. GitHub Pages redeploys
+automatically within 1-2 minutes.
 
 ### Maintenance notes
 
 - Bump the "Dernière mise à jour / Last updated" date when changing the policy.
 - If a change broadens data collection or sharing, announce it in-app too
   (see policy §8).
->>>>>>> 59213cdcb575f2390531aad9a56b8c4eea3954cb
+- The privacy URL is the one declared in App Store Connect; don't break it.
+
+---
+
+## License
+
+Proprietary — all rights reserved.
