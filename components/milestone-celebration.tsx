@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { HAPTIC, isMilestone, milestoneMessage } from '@/constants/motion';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { maybeRequestReview } from '@/lib/review';
 import { useItemsStore } from '@/stores/items-store';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -59,8 +60,19 @@ export function MilestoneCelebration() {
         );
         // Auto-dismiss after 3.5s
         const timeout = setTimeout(() => setMessage(null), 3500);
+        // At the 5-items milestone, ride the good mood: once the confetti has
+        // settled, ask for an App Store rating (once per install, see lib/review).
+        let reviewTimeout: ReturnType<typeof setTimeout> | undefined;
+        if (m === 5) {
+          reviewTimeout = setTimeout(() => {
+            maybeRequestReview();
+          }, 4000);
+        }
         prevCount.current = count;
-        return () => clearTimeout(timeout);
+        return () => {
+          clearTimeout(timeout);
+          if (reviewTimeout) clearTimeout(reviewTimeout);
+        };
       }
     }
     prevCount.current = count;

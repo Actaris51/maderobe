@@ -11,13 +11,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BackgroundPicker } from '@/components/background-picker';
-import { FlatLayComposer } from '@/components/flat-lay-composer';
+import { ShareableFlatLay } from '@/components/shareable-flat-lay';
 import { ThemedText } from '@/components/themed-text';
-import {
-  getBackgroundById,
-  type FlatLayBackground,
-} from '@/constants/flat-lay-backgrounds';
 import { HAPTIC, SPRING } from '@/constants/motion';
 import { TYPE_LABELS_FR } from '@/constants/taxonomy';
 import { Colors } from '@/constants/theme';
@@ -62,14 +57,6 @@ export default function OutfitOfTheDayScreen() {
   /** Map of slot type → Slot. Only types that actually have items appear here. */
   const [slots, setSlots] = useState<Record<string, Slot>>({});
 
-  /** Flat-lay background — persisted app-wide in the settings store. */
-  const flatLayBackgroundId = useSettingsStore((s) => s.flatLayBackgroundId);
-  const setSetting = useSettingsStore((s) => s.set);
-  const bg = getBackgroundById(flatLayBackgroundId);
-  const setBg = useCallback(
-    (next: FlatLayBackground) => setSetting('flatLayBackgroundId', next.id),
-    [setSetting],
-  );
 
   // ----- Build the initial outfit on mount -----
   useEffect(() => {
@@ -210,18 +197,10 @@ export default function OutfitOfTheDayScreen() {
         )}
 
         {/* Flat-lay preview — Pinterest-style composition of the current outfit.
-            Updates live when slots are iterated below. Background selectable
-            via the swatch row underneath. */}
+            Updates live when slots are iterated below. Shareable as PNG. */}
         {currentItems.length > 0 && (
           <View style={styles.flatLayWrap}>
-            <FlatLayComposer
-              items={currentItems}
-              width={SCREEN_W - 32}
-              background={bg}
-              showWatermark
-              animate
-            />
-            <BackgroundPicker selectedId={bg.id} onSelect={setBg} />
+            <ShareableFlatLay items={currentItems} width={SCREEN_W - 32} />
           </View>
         )}
 

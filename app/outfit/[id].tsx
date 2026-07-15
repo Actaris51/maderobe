@@ -5,14 +5,8 @@ import { useCallback, useMemo } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BackgroundPicker } from '@/components/background-picker';
-import { FlatLayComposer } from '@/components/flat-lay-composer';
+import { ShareableFlatLay } from '@/components/shareable-flat-lay';
 import { ThemedText } from '@/components/themed-text';
-import {
-  getBackgroundById,
-  type FlatLayBackground,
-} from '@/constants/flat-lay-backgrounds';
-import { useSettingsStore } from '@/stores/settings-store';
 import {
   OCCASION_LABELS_FR,
   SEASON_LABELS_FR,
@@ -44,14 +38,6 @@ export default function OutfitDetailScreen() {
     return outfit.itemIds.map((iid) => itemsMap[iid]).filter(Boolean);
   }, [outfit, itemsMap]);
 
-  /** Flat-lay background — persisted app-wide in the settings store. */
-  const flatLayBackgroundId = useSettingsStore((s) => s.flatLayBackgroundId);
-  const setSetting = useSettingsStore((s) => s.set);
-  const bg = getBackgroundById(flatLayBackgroundId);
-  const setBg = useCallback(
-    (next: FlatLayBackground) => setSetting('flatLayBackgroundId', next.id),
-    [setSetting],
-  );
 
   const handleMarkWorn = useCallback(() => {
     if (!outfit) return;
@@ -107,17 +93,10 @@ export default function OutfitDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Pinterest-style flat-lay preview of the outfit */}
+        {/* Pinterest-style flat-lay preview of the outfit — shareable as PNG */}
         {items.length > 0 && (
           <View style={styles.flatLayWrap}>
-            <FlatLayComposer
-              items={items}
-              width={SCREEN_W - 32}
-              background={bg}
-              showWatermark
-              animate
-            />
-            <BackgroundPicker selectedId={bg.id} onSelect={setBg} />
+            <ShareableFlatLay items={items} width={SCREEN_W - 32} />
           </View>
         )}
 

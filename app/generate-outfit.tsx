@@ -8,15 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HAPTIC, staggerDelay } from '@/constants/motion';
 
-import { BackgroundPicker } from '@/components/background-picker';
 import { Chip } from '@/components/chip';
-import { FlatLayComposer } from '@/components/flat-lay-composer';
 import { SectionHeader } from '@/components/section-header';
+import { ShareableFlatLay } from '@/components/shareable-flat-lay';
 import { ThemedText } from '@/components/themed-text';
-import {
-  getBackgroundById,
-  type FlatLayBackground,
-} from '@/constants/flat-lay-backgrounds';
 import {
   OCCASIONS_ORDER,
   OCCASION_LABELS_FR,
@@ -48,14 +43,6 @@ export default function GenerateOutfitScreen() {
   const addOutfit = useOutfitsStore((s) => s.add);
   const defaultOccasion = useSettingsStore((s) => s.defaultOccasion);
 
-  /** Flat-lay background — persisted app-wide in the settings store. */
-  const flatLayBackgroundId = useSettingsStore((s) => s.flatLayBackgroundId);
-  const setSetting = useSettingsStore((s) => s.set);
-  const bg = getBackgroundById(flatLayBackgroundId);
-  const setBg = useCallback(
-    (next: FlatLayBackground) => setSetting('flatLayBackgroundId', next.id),
-    [setSetting],
-  );
 
   // Pickers
   const [occasion, setOccasion] = useState<Occasion>(defaultOccasion);
@@ -203,17 +190,13 @@ export default function GenerateOutfitScreen() {
             </ThemedText>
 
             {/* Flat-lay preview — re-keyed on result so the cascade re-fires
-                on each regenerate, like the item rows below. */}
+                on each regenerate, like the item rows below. Shareable as PNG. */}
             <View style={styles.flatLayWrap}>
-              <FlatLayComposer
-                key={result.itemIds.join('-')}
+              <ShareableFlatLay
                 items={resolvedItems}
                 width={SCREEN_W - 32}
-                background={bg}
-                showWatermark
-                animate
+                animationKey={result.itemIds.join('-')}
               />
-              <BackgroundPicker selectedId={bg.id} onSelect={setBg} />
             </View>
 
             <View style={styles.outfitStack}>

@@ -16,6 +16,7 @@ const DEFAULTS: Settings = {
   locale: 'fr',
   hasSeenOnboarding: false,
   flatLayBackgroundId: 'dark-wood',
+  hasAskedReview: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(

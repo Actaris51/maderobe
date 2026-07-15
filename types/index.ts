@@ -105,4 +105,6 @@ export type Settings = {
   hasSeenOnboarding: boolean;
   /** Preferred flat-lay background id (see constants/flat-lay-backgrounds). */
   flatLayBackgroundId: string;
+  /** True once we've asked for an App Store rating (never re-ask). */
+  hasAskedReview: boolean;
 };
