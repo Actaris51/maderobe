@@ -15,6 +15,7 @@ const DEFAULTS: Settings = {
   hapticsEnabled: true,
   locale: 'fr',
   hasSeenOnboarding: false,
+  flatLayBackgroundId: 'dark-wood',
 };
 
 export const useSettingsStore = create<SettingsState>()(

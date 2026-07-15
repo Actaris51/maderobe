@@ -15,7 +15,7 @@ import { BackgroundPicker } from '@/components/background-picker';
 import { FlatLayComposer } from '@/components/flat-lay-composer';
 import { ThemedText } from '@/components/themed-text';
 import {
-  DEFAULT_FLAT_LAY_BACKGROUND,
+  getBackgroundById,
   type FlatLayBackground,
 } from '@/constants/flat-lay-backgrounds';
 import { HAPTIC, SPRING } from '@/constants/motion';
@@ -62,8 +62,14 @@ export default function OutfitOfTheDayScreen() {
   /** Map of slot type → Slot. Only types that actually have items appear here. */
   const [slots, setSlots] = useState<Record<string, Slot>>({});
 
-  /** Selected flat-lay background (local state; persistence comes in v1.1). */
-  const [bg, setBg] = useState<FlatLayBackground>(DEFAULT_FLAT_LAY_BACKGROUND);
+  /** Flat-lay background — persisted app-wide in the settings store. */
+  const flatLayBackgroundId = useSettingsStore((s) => s.flatLayBackgroundId);
+  const setSetting = useSettingsStore((s) => s.set);
+  const bg = getBackgroundById(flatLayBackgroundId);
+  const setBg = useCallback(
+    (next: FlatLayBackground) => setSetting('flatLayBackgroundId', next.id),
+    [setSetting],
+  );
 
   // ----- Build the initial outfit on mount -----
   useEffect(() => {

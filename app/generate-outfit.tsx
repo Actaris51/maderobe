@@ -2,15 +2,21 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HAPTIC, staggerDelay } from '@/constants/motion';
 
+import { BackgroundPicker } from '@/components/background-picker';
 import { Chip } from '@/components/chip';
+import { FlatLayComposer } from '@/components/flat-lay-composer';
 import { SectionHeader } from '@/components/section-header';
 import { ThemedText } from '@/components/themed-text';
+import {
+  getBackgroundById,
+  type FlatLayBackground,
+} from '@/constants/flat-lay-backgrounds';
 import {
   OCCASIONS_ORDER,
   OCCASION_LABELS_FR,
@@ -30,6 +36,8 @@ import { useOutfitsStore } from '@/stores/outfits-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { ClothingItem, Occasion, Season } from '@/types';
 
+const SCREEN_W = Dimensions.get('window').width;
+
 export default function GenerateOutfitScreen() {
   const scheme = useColorScheme() ?? 'light';
   const tint = Colors[scheme].tint;
@@ -39,6 +47,15 @@ export default function GenerateOutfitScreen() {
   const items = useMemo(() => Object.values(itemsMap), [itemsMap]);
   const addOutfit = useOutfitsStore((s) => s.add);
   const defaultOccasion = useSettingsStore((s) => s.defaultOccasion);
+
+  /** Flat-lay background — persisted app-wide in the settings store. */
+  const flatLayBackgroundId = useSettingsStore((s) => s.flatLayBackgroundId);
+  const setSetting = useSettingsStore((s) => s.set);
+  const bg = getBackgroundById(flatLayBackgroundId);
+  const setBg = useCallback(
+    (next: FlatLayBackground) => setSetting('flatLayBackgroundId', next.id),
+    [setSetting],
+  );
 
   // Pickers
   const [occasion, setOccasion] = useState<Occasion>(defaultOccasion);
@@ -184,6 +201,21 @@ export default function GenerateOutfitScreen() {
             <ThemedText style={styles.resultMeta}>
               {resolvedItems.length} pièces · Harmonie {result.score.toFixed(1)}
             </ThemedText>
+
+            {/* Flat-lay preview — re-keyed on result so the cascade re-fires
+                on each regenerate, like the item rows below. */}
+            <View style={styles.flatLayWrap}>
+              <FlatLayComposer
+                key={result.itemIds.join('-')}
+                items={resolvedItems}
+                width={SCREEN_W - 32}
+                background={bg}
+                showWatermark
+                animate
+              />
+              <BackgroundPicker selectedId={bg.id} onSelect={setBg} />
+            </View>
+
             <View style={styles.outfitStack}>
               {resolvedItems.map((it, i) => (
                 <Animated.View
@@ -286,5 +318,6 @@ const styles = StyleSheet.create({
   resultBlock: { marginTop: 24 },
   resultTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
   resultMeta: { fontSize: 13, opacity: 0.6, marginBottom: 12 },
+  flatLayWrap: { alignItems: 'center', gap: 4, marginBottom: 16 },
   outfitStack: { marginTop: 8 },
 });

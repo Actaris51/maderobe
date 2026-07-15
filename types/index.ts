@@ -103,4 +103,6 @@ export type Settings = {
   locale: 'fr' | 'en';
   /** Marks the first-launch onboarding flow as completed. */
   hasSeenOnboarding: boolean;
+  /** Preferred flat-lay background id (see constants/flat-lay-backgrounds). */
+  flatLayBackgroundId: string;
 };

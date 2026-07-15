@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,9 +9,10 @@ import { BackgroundPicker } from '@/components/background-picker';
 import { FlatLayComposer } from '@/components/flat-lay-composer';
 import { ThemedText } from '@/components/themed-text';
 import {
-  DEFAULT_FLAT_LAY_BACKGROUND,
+  getBackgroundById,
   type FlatLayBackground,
 } from '@/constants/flat-lay-backgrounds';
+import { useSettingsStore } from '@/stores/settings-store';
 import {
   OCCASION_LABELS_FR,
   SEASON_LABELS_FR,
@@ -43,8 +44,14 @@ export default function OutfitDetailScreen() {
     return outfit.itemIds.map((iid) => itemsMap[iid]).filter(Boolean);
   }, [outfit, itemsMap]);
 
-  /** Selected flat-lay background (local state). */
-  const [bg, setBg] = useState<FlatLayBackground>(DEFAULT_FLAT_LAY_BACKGROUND);
+  /** Flat-lay background — persisted app-wide in the settings store. */
+  const flatLayBackgroundId = useSettingsStore((s) => s.flatLayBackgroundId);
+  const setSetting = useSettingsStore((s) => s.set);
+  const bg = getBackgroundById(flatLayBackgroundId);
+  const setBg = useCallback(
+    (next: FlatLayBackground) => setSetting('flatLayBackgroundId', next.id),
+    [setSetting],
+  );
 
   const handleMarkWorn = useCallback(() => {
     if (!outfit) return;
