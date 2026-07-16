@@ -76,7 +76,9 @@
             "buildReactNativeFromSource": true
           }
         }
-      ]
+      ],
+      "expo-localization",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

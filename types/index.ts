@@ -107,4 +107,10 @@ export type Settings = {
   flatLayBackgroundId: string;
   /** True once we've asked for an App Store rating (never re-ask). */
   hasAskedReview: boolean;
+  /** Daily "outfit of the day" local reminder (opt-in). */
+  dailyReminderEnabled: boolean;
+  /** Hour (0-23) of the daily reminder. */
+  dailyReminderHour: number;
+  /** Minute (0-59) of the daily reminder. */
+  dailyReminderMinute: number;
 };

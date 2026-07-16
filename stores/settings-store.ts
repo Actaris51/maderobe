@@ -17,6 +17,9 @@ const DEFAULTS: Settings = {
   hasSeenOnboarding: false,
   flatLayBackgroundId: 'dark-wood',
   hasAskedReview: false,
+  dailyReminderEnabled: false,
+  dailyReminderHour: 7,
+  dailyReminderMinute: 30,
 };
 
 export const useSettingsStore = create<SettingsState>()(

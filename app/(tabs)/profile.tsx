@@ -1,8 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
@@ -16,6 +17,11 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { exportWardrobeJson } from '@/lib/export';
 import { getCoarseLocation } from '@/lib/location';
+import {
+  cancelDailyReminder,
+  requestNotificationPermission,
+  scheduleDailyReminder,
+} from '@/lib/notifications';
 import { computeStats } from '@/lib/stats';
 import { conditionEmoji, conditionLabel } from '@/lib/weather';
 import { useItemsStore } from '@/stores/items-store';
@@ -26,6 +32,16 @@ import type { LibraryLayout, Occasion } from '@/types';
 
 const PRIVACY_URL = 'https://actaris51.github.io/maderobe/privacy-policy.html';
 const CONTACT_EMAIL = 'julien.duval.patrimoine@gmail.com';
+
+/** Preset times for the daily reminder — chips keep the UI dead simple. */
+const REMINDER_TIMES = [
+  { label: '6 h 30', hour: 6, minute: 30 },
+  { label: '7 h', hour: 7, minute: 0 },
+  { label: '7 h 30', hour: 7, minute: 30 },
+  { label: '8 h', hour: 8, minute: 0 },
+  { label: '8 h 30', hour: 8, minute: 30 },
+  { label: '9 h', hour: 9, minute: 0 },
+] as const;
 
 export default function ProfileScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -106,6 +122,34 @@ export default function ProfileScreen() {
         },
       ],
     );
+  };
+
+  // ----- Daily reminder -----
+
+  const handleToggleReminder = async (enabled: boolean) => {
+    if (!enabled) {
+      setSetting('dailyReminderEnabled', false);
+      await cancelDailyReminder();
+      return;
+    }
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      Alert.alert(
+        'Notifications désactivées',
+        'Autorise les notifications dans Réglages › Maderobe › Notifications pour recevoir le rappel quotidien.',
+      );
+      return;
+    }
+    setSetting('dailyReminderEnabled', true);
+    await scheduleDailyReminder(settings.dailyReminderHour, settings.dailyReminderMinute);
+  };
+
+  const handlePickReminderTime = async (hour: number, minute: number) => {
+    setSetting('dailyReminderHour', hour);
+    setSetting('dailyReminderMinute', minute);
+    if (settings.dailyReminderEnabled) {
+      await scheduleDailyReminder(hour, minute);
+    }
   };
 
   const handleOpenPrivacy = () => WebBrowser.openBrowserAsync(PRIVACY_URL);
@@ -280,6 +324,38 @@ export default function ProfileScreen() {
               ))}
             </View>
           </View>
+
+          {/* Daily outfit reminder — local notification, opt-in, no server. */}
+          <View style={styles.settingRow}>
+            <View style={styles.reminderHeader}>
+              <View style={styles.reminderHeaderText}>
+                <ThemedText style={styles.settingLabel}>Rappel « Tenue du jour »</ThemedText>
+                <ThemedText style={styles.reminderSub}>
+                  Une notification locale chaque matin. Rien ne quitte ton téléphone.
+                </ThemedText>
+              </View>
+              <Switch
+                value={settings.dailyReminderEnabled}
+                onValueChange={handleToggleReminder}
+                trackColor={{ true: tint }}
+              />
+            </View>
+            {settings.dailyReminderEnabled && (
+              <View style={styles.settingChips}>
+                {REMINDER_TIMES.map(({ label, hour, minute }) => (
+                  <Chip
+                    key={label}
+                    label={label}
+                    selected={
+                      settings.dailyReminderHour === hour &&
+                      settings.dailyReminderMinute === minute
+                    }
+                    onPress={() => handlePickReminderTime(hour, minute)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         </Section>
 
         {/* -------- Tools -------- */}
@@ -327,7 +403,9 @@ export default function ProfileScreen() {
             color={text}
           />
           <View style={[styles.aboutFooter, { borderColor: text + '15' }]}>
-            <ThemedText style={styles.aboutText}>Maderobe · v1.0.0</ThemedText>
+            <ThemedText style={styles.aboutText}>
+              Maderobe · v{Constants.expoConfig?.version ?? '1.1.0'}
+            </ThemedText>
             <ThemedText style={styles.aboutText}>
               Toutes tes données restent sur ton téléphone.
             </ThemedText>
@@ -449,6 +527,15 @@ const styles = StyleSheet.create({
   settingRow: { marginBottom: 16 },
   settingLabel: { fontSize: 14, marginBottom: 8, opacity: 0.8 },
   settingChips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  reminderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
+  },
+  reminderHeaderText: { flex: 1 },
+  reminderSub: { fontSize: 12, opacity: 0.55, lineHeight: 16 },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
