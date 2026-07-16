@@ -12,6 +12,9 @@
       "supportsTablet": true,
       "requireFullScreen": true,
       "bundleIdentifier": "com.maderobe.app",
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "UIRequiresFullScreen": true,
         "ITSAppUsesNonExemptEncryption": false,
